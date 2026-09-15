@@ -1,0 +1,21 @@
+package:
+  name: squab-paper-launcher
+  version: 0.1.0
+  epoch: 0
+  description: Squab launcher for the Wing-verified Paper runtime
+  copyright:
+    - license: LicenseRef-Proprietary
+  dependencies:
+    runtime:
+      - busybox
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+pipeline:
+  - runs: |
+      install -Dm0555 squab-paper-launcher "${{targets.destdir}}/usr/local/bin/squab-paper-launcher"

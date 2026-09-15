@@ -1,0 +1,397 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revision_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "game": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "game_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "image": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.:-]*/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$"
+    },
+    "architectures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "amd64",
+          "arm64"
+        ]
+      },
+      "maxItems": 2
+    },
+    "run_as": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "gid": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "uid",
+        "gid"
+      ],
+      "additionalProperties": false
+    },
+    "argv": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "maxItems": 64
+    },
+    "minimum_limits": {
+      "type": "object",
+      "properties": {
+        "memory_mib": {
+          "type": "integer",
+          "minimum": 128,
+          "maximum": 1048576
+        },
+        "disk_mib": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 104857600
+        },
+        "cpu_millicores": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 1048576
+        }
+      },
+      "required": [
+        "memory_mib",
+        "disk_mib",
+        "cpu_millicores"
+      ],
+      "additionalProperties": false
+    },
+    "ports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "protocol": {
+            "type": "string",
+            "enum": [
+              "tcp",
+              "udp"
+            ]
+          },
+          "container_port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "required": [
+          "name",
+          "protocol",
+          "container_port"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 16
+    },
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "object",
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "maxProperties": 64,
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "string",
+                  "integer",
+                  "boolean"
+                ]
+              },
+              "minimum": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "maximum": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "minLength": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "maxLength": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "enum": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "boolean"
+                  ]
+                },
+                "maxItems": 100
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "integer",
+                  "boolean"
+                ]
+              },
+              "sensitive": {
+                "type": "boolean"
+              },
+              "create_only": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^(?!SQUAB_SYSTEM_).+$"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "maxItems": 64
+        },
+        "additionalProperties": {
+          "const": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "properties",
+        "required",
+        "additionalProperties"
+      ],
+      "additionalProperties": false
+    },
+    "readiness": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fake_protocol",
+            "minecraft_status"
+          ]
+        },
+        "port_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        }
+      },
+      "required": [
+        "kind",
+        "port_name",
+        "timeout_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "stop": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        }
+      },
+      "required": [
+        "command",
+        "timeout_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "data_mount": {
+      "type": "string",
+      "const": "/data"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "console",
+          "files",
+          "stopped_backup",
+          "configuration"
+        ]
+      },
+      "maxItems": 4
+    },
+    "test_only": {
+      "type": "boolean"
+    },
+    "license": {
+      "type": "object",
+      "properties": {
+        "acceptance_required": {
+          "type": "boolean"
+        },
+        "document_url": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?:/[A-Za-z0-9._~!$&'()*+,;=:@/-]*)?$"
+        },
+        "document_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        }
+      },
+      "required": [
+        "acceptance_required",
+        "document_url",
+        "document_version"
+      ],
+      "additionalProperties": false
+    },
+    "runtime_artifact": {
+      "type": "object",
+      "properties": {
+        "distribution": {
+          "const": "runtime_download",
+          "type": "string"
+        },
+        "download_url": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?:/[A-Za-z0-9._~!$&'()*+,;=:@/-]*)?$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 134217728
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "release_channel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "experimental"
+          ]
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time",
+          "minLength": 20,
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "distribution",
+        "download_url",
+        "size_bytes",
+        "sha256",
+        "release_channel",
+        "published_at"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "revision_id",
+    "name",
+    "game",
+    "game_version",
+    "image",
+    "architectures",
+    "run_as",
+    "argv",
+    "minimum_limits",
+    "ports",
+    "configuration_schema",
+    "readiness",
+    "stop",
+    "data_mount",
+    "capabilities",
+    "test_only"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.squab.invalid/template.schema.json",
+  "title": "Squab immutable game template v1"
+}

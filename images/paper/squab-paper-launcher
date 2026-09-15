@@ -1,0 +1,57 @@
+#!/bin/sh
+set -eu
+
+artifact=/squab-runtime/7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08.jar
+expected_size=64521337
+expected_sha256=7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08
+
+[ "${SQUAB_SYSTEM_LICENSE_ACCEPTED:-}" = true ] || {
+    echo "trusted license acceptance is required" >&2
+    exit 64
+}
+
+env | cut -d= -f1 | while IFS= read -r name; do
+    case "$name" in
+        SQUAB_SYSTEM_LICENSE_ACCEPTED) ;;
+        SQUAB_SYSTEM_*)
+            echo "unsupported protected environment key" >&2
+            exit 64
+            ;;
+    esac
+done
+
+[ -z "${JAVA_TOOL_OPTIONS:-}" ] &&
+    [ -z "${JDK_JAVA_OPTIONS:-}" ] &&
+    [ -z "${_JAVA_OPTIONS:-}" ] || {
+        echo "customer Java options are forbidden" >&2
+        exit 64
+    }
+
+[ -f "$artifact" ] && [ ! -L "$artifact" ] || {
+    echo "Paper runtime artifact is missing or unsafe" >&2
+    exit 65
+}
+
+actual_size=$(wc -c <"$artifact" | tr -d ' ')
+[ "$actual_size" = "$expected_size" ] || {
+    echo "Paper runtime artifact size mismatch" >&2
+    exit 65
+}
+actual_sha256=$(sha256sum "$artifact" | cut -d' ' -f1)
+[ "$actual_sha256" = "$expected_sha256" ] || {
+    echo "Paper runtime artifact checksum mismatch" >&2
+    exit 65
+}
+
+umask 077
+[ -f /data/server.properties ] && [ ! -L /data/server.properties ] || {
+    echo "trusted Paper configuration is missing or unsafe" >&2
+    exit 66
+}
+properties=/data/.squab-server-properties.$$
+sed '/^[[:space:]]*online-mode\([[:space:]]\|[:=]\)/d' /data/server.properties >"$properties"
+printf 'online-mode=true\n' >>"$properties"
+mv -f "$properties" /data/server.properties
+printf 'eula=true\n' >/data/eula.txt
+
+exec java -XX:MaxRAMPercentage=75.0 -jar "$artifact" nogui
