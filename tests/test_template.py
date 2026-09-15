@@ -10,9 +10,9 @@ class TemplateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'manifest.json'
             command = ['python3', 'tools/render-manifest.py', '--output', str(output), '--image']
-            for image in ['ghcr.io/squab-dev/squab-paper:latest', 'ghcr.io/squab-dev/squab-paper@sha256:' + '0' * 64]:
+            for image in ['ghcr.io/squab-dev/squab-templates/paper:latest', 'ghcr.io/squab-dev/squab-templates/paper@sha256:' + '0' * 64]:
                 self.assertNotEqual(subprocess.run(command + [image], capture_output=True).returncode, 0)
-            image = 'ghcr.io/squab-dev/squab-paper@sha256:' + '0123456789abcdef' * 4
+            image = 'ghcr.io/squab-dev/squab-templates/paper@sha256:' + '0123456789abcdef' * 4
             subprocess.run(command + [image], check=True)
             first = json.loads(output.read_text())
             jsonschema.Draft202012Validator(json.loads(Path('api/vendor/template.schema.json').read_text())).validate(first)

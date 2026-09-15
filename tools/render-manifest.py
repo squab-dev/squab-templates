@@ -9,8 +9,8 @@ p = argparse.ArgumentParser()
 p.add_argument('--image', required=True)
 p.add_argument('--output', type=Path, required=True)
 args = p.parse_args()
-if not re.fullmatch(r'ghcr\.io/squab-dev/squab-paper@sha256:[0-9a-f]{64}', args.image):
-    p.error('expected a digest-pinned ghcr.io/squab-dev/squab-paper image')
+if not re.fullmatch(r'ghcr\.io/squab-dev/squab-templates/paper@sha256:[0-9a-f]{64}', args.image):
+    p.error('expected a digest-pinned ghcr.io/squab-dev/squab-templates/paper image')
 if len(set(args.image.rsplit(':', 1)[1])) == 1:
     p.error('placeholder digests are not publishable')
 manifest = json.loads(Path('images/paper/template.json').read_text())

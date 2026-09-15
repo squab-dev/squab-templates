@@ -56,7 +56,7 @@ identical image digests across different source commits or signing keys.
 
 Pull requests build, smoke-test and scan Paper without publishing. Changes on
 `main` build and publish the verified image as
-`ghcr.io/squab-dev/squab-paper:sha-<commit>`. The workflow records the real
+`ghcr.io/squab-dev/squab-templates/paper:sha-<commit>`. The workflow records the real
 registry digest and uploads a matching immutable `template.json` and SBOM.
 No mutable tag or example digest is used in a catalog manifest. Each image
 digest produces a stable, distinct revision UUID.

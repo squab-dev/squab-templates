@@ -26,3 +26,7 @@ manifest digest and emits the importable catalog manifest. No Paper JAR is
 redistributed. Public catalog publication, authenticated client join, real world
 persistence, backup/restore and full runtime resource acceptance remain separate
 operator release checks and are not claimed by these smoke tests.
+
+The first GitHub run passed build, smoke tests and scan but could not write the
+legacy Wing-owned `squab-paper` package. The new repository uses its own
+`ghcr.io/squab-dev/squab-templates/paper` package namespace instead.

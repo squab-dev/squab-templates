@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          image="ghcr.io/squab-dev/squab-paper:sha-$GITHUB_SHA"
+          image="ghcr.io/squab-dev/squab-templates/paper:sha-$GITHUB_SHA"
           docker tag squab-paper:verify-amd64 "$image"
           docker push "$image"
           ref=$(docker inspect --format '{{index .RepoDigests 0}}' "$image")
