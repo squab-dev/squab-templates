@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "id": "00000000-0000-4000-8000-000000000025",
+  "revision_id": "f0691f83-07b0-52f0-b1c2-8d31e1fbf803",
+  "name": "Paper 26.2 build 123",
+  "game": "minecraft-java-paper",
+  "game_version": "26.2+build.123",
+  "architectures": [
+    "amd64"
+  ],
+  "run_as": {
+    "uid": 65532,
+    "gid": 65532
+  },
+  "argv": [
+    "/usr/local/bin/squab-paper-launcher"
+  ],
+  "minimum_limits": {
+    "memory_mib": 2048,
+    "disk_mib": 4096,
+    "cpu_millicores": 1000
+  },
+  "ports": [
+    {
+      "name": "game",
+      "protocol": "tcp",
+      "container_port": 25565
+    }
+  ],
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "motd": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 120,
+        "sensitive": false
+      },
+      "difficulty": {
+        "type": "string",
+        "enum": [
+          "peaceful",
+          "easy",
+          "normal",
+          "hard"
+        ],
+        "default": "normal",
+        "sensitive": false
+      },
+      "game_mode": {
+        "type": "string",
+        "enum": [
+          "survival",
+          "creative",
+          "adventure",
+          "spectator"
+        ],
+        "default": "survival",
+        "sensitive": false
+      },
+      "max_players": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 20,
+        "sensitive": false
+      },
+      "whitelist_enabled": {
+        "type": "boolean",
+        "default": false,
+        "sensitive": false
+      },
+      "seed": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 128,
+        "sensitive": false,
+        "create_only": true
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "readiness": {
+    "kind": "minecraft_status",
+    "port_name": "game",
+    "timeout_seconds": 300
+  },
+  "stop": {
+    "command": "stop",
+    "timeout_seconds": 60
+  },
+  "data_mount": "/data",
+  "capabilities": [
+    "console",
+    "files",
+    "stopped_backup",
+    "configuration"
+  ],
+  "test_only": false,
+  "license": {
+    "acceptance_required": true,
+    "document_url": "https://www.minecraft.net/en-us/eula",
+    "document_version": "minecraft-eula-live-2026-09-12"
+  },
+  "runtime_artifact": {
+    "distribution": "runtime_download",
+    "download_url": "https://fill-data.papermc.io/v1/objects/7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08/paper-26.2-123.jar",
+    "size_bytes": 64521337,
+    "sha256": "7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08",
+    "release_channel": "stable",
+    "published_at": "2026-09-09T17:32:22Z"
+  },
+  "image": "ghcr.io/squab-dev/squab-templates/paper@sha256:4d09c2439509d77867a6296bb6f8ac2de3c54739b2e739b781b136591e378191"
+}

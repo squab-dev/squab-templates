@@ -66,8 +66,8 @@ operator environment (database URL, operator identity/token and registry
 allowlist including `ghcr.io`):
 
 ```sh
-core-operator catalog validate --manifest template.json
-core-operator catalog publish --manifest template.json
+core-operator catalog validate --manifest releases/paper/0.1.0.json
+core-operator catalog publish --manifest releases/paper/0.1.0.json
 ```
 
 This uses Core's existing authenticated operator path and audit trail. The Panel

@@ -30,3 +30,16 @@ operator release checks and are not claimed by these smoke tests.
 The first GitHub run passed build, smoke tests and scan but could not write the
 legacy Wing-owned `squab-paper` package. The new repository uses its own
 `ghcr.io/squab-dev/squab-templates/paper` package namespace instead.
+
+## Published build
+
+GitHub run https://github.com/squab-dev/squab-templates/actions/runs/35037136798
+completed successfully: build, smoke tests, vulnerability scan, GHCR push and
+catalog/SBOM upload. Source commit: `c7120efed39f365853fad56b1c21c75108fd99c2`.
+
+Published reference:
+`ghcr.io/squab-dev/squab-templates/paper@sha256:4d09c2439509d77867a6296bb6f8ac2de3c54739b2e739b781b136591e378191`.
+
+The downloaded manifest passed the shared schema validator and is preserved in
+`releases/paper/0.1.0.json` for the operator catalog import. It has not been
+imported into any live Core database.
