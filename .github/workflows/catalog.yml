@@ -1,0 +1,18 @@
+name: Public catalog
+on:
+  pull_request:
+    paths: ['catalog.json', 'releases/**', 'tests/test_catalog.py', '.github/workflows/catalog.yml']
+  push:
+    branches: [main]
+    paths: ['catalog.json', 'releases/**', 'tests/test_catalog.py', '.github/workflows/catalog.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install -r requirements-dev.txt
+      - run: make check
