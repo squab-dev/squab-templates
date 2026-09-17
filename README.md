@@ -61,26 +61,34 @@ registry digest and uploads a matching immutable `template.json` and SBOM.
 No mutable tag or example digest is used in a catalog manifest. Each image
 digest produces a stable, distinct revision UUID.
 
-On the Core operator host, after the required release acceptance, use the normal
-operator environment (database URL, operator identity/token and registry
-allowlist including `ghcr.io`):
+The public `catalog.json` index lists the committed release manifests to import.
+Core 0.1.2 and squab-helm chart 0.3.0 can fetch it automatically on installation
+and every five minutes (enable `catalog.enabled` and configure the existing
+operator Secret). The default URL is
+`https://raw.githubusercontent.com/squab-dev/squab-templates/main/catalog.json`.
+The repository is public, so no GitHub token is needed. Core keeps existing
+entries on fetch failures and rejects changed content for an existing revision.
+
+To publish another curated release, commit the verified workflow's manifest to
+`releases/<game>/<version>.json` and append that path to `catalog.json`, ordered
+oldest to newest. Do not edit an already published revision; each new image
+digest needs a new revision. `make check` validates the public index and all
+referenced releases. Adding a release to this index authorizes deployment
+operators who enabled sync to import it. Image builds still produce candidates;
+only indexed releases enter the customer catalog after the required release
+acceptance. This keeps experimental image builds out of running deployments.
+
+The Panel queries `/api/v1/templates`, follows pagination, and refreshes every
+60 seconds while game selection is visible, on returning to the tab, or when
+the user clicks **Refresh games**. It retains the last list on failures. A new
+indexed release normally appears within five minutes plus the Panel refresh.
+
+Manual operator commands remain available (operator token on stdin):
 
 ```sh
-core-operator catalog validate --manifest releases/paper/0.1.0.json
-core-operator catalog publish --manifest releases/paper/0.1.0.json
+core-operator catalog sync --index-url https://raw.githubusercontent.com/squab-dev/squab-templates/main/catalog.json
+core-operator catalog ensure --manifest releases/paper/0.1.0.json
 ```
-
-This uses Core's existing authenticated operator path and audit trail. The Panel
-queries `/api/v1/templates`, follows pagination, and refreshes every 60 seconds
-while the game-selection step is visible, on returning to the tab, or when
-the user clicks **Refresh games**. It retains the last list on failures. If a
-selected revision changes, it requires an explicit new selection rather than
-combining old configuration with a new revision.
-
-Image publication does not automatically publish a customer catalog entry.
-The existing specification requires operator/legal review and real Paper client,
-world persistence, backup/restore and resource acceptance before public catalog
-publication. Those acceptance steps are not claimed by the image smoke test.
 
 ## Runtime contract
 

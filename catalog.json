@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "manifests": [
+    "releases/paper/0.1.0.json"
+  ]
+}
