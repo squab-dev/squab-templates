@@ -1,0 +1,21 @@
+package:
+  name: squab-hytale-launcher
+  version: 0.1.0
+  epoch: 0
+  description: Squab launcher for the operator-supplied Hytale runtime
+  copyright:
+    - license: LicenseRef-Proprietary
+  dependencies:
+    runtime:
+      - busybox
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+pipeline:
+  - runs: |
+      install -Dm0555 squab-hytale-launcher "${{targets.destdir}}/usr/local/bin/squab-hytale-launcher"

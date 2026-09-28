@@ -102,3 +102,13 @@ configuration, preserves online authentication and executes Java directly.
 This repository follows specification 0.3.5's manifest/API contract. The user's
 2026-09-16 apko/Wolfi packaging choice supersedes the earlier Corretto image
 choice for this new image; the legacy Wing image remains historical evidence.
+
+## Hytale
+
+[Hytale runtime image](images/hytale/README.md) uses the same minimal Wolfi Java 25
+base packages, non-root identity and apko/melange build. Build with
+`make build GAME=hytale`; smoke-test with `make smoke GAME=hytale`. Its separate
+workflow publishes an image and SBOM without adding a Core catalog entry.
+Supply the authenticated Hytale download separately; the launcher verifies the
+selected JAR and assets and disables automatic updates. A ready-to-use Compose
+example and console authentication instructions are included.

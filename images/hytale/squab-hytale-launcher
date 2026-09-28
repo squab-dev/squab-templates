@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+fail() { echo "$2" >&2; exit "$1"; }
+[ "$#" -eq 0 ] || fail 64 'Configure Hytale through its supported environment and config.json, not extra arguments'
+[ -z "${JAVA_TOOL_OPTIONS:-}${JDK_JAVA_OPTIONS:-}${_JAVA_OPTIONS:-}${JVM_ARGS:-}" ] || fail 64 'Unrestricted JVM options are unsupported'
+port=${HYTALE_PORT:-5520}
+case "$port" in ''|*[!0-9]*|??????*) fail 64 'HYTALE_PORT must be 1..65535';; esac
+[ "$port" -ge 1 ] && [ "$port" -le 65535 ] || fail 64 'HYTALE_PORT must be 1..65535'
+heap=${HYTALE_HEAP_PERCENT:-75}
+case "$heap" in ''|*[!0-9]*|???*) fail 64 'HYTALE_HEAP_PERCENT must be 25..85';; esac
+[ "$heap" -ge 25 ] && [ "$heap" -le 85 ] || fail 64 'HYTALE_HEAP_PERCENT must be 25..85'
+verify() {
+    file=$1 expected=$2
+    case "$expected" in ''|*[!0-9a-f]*) fail 64 'Provide lowercase SHA-256 checksums for both Hytale runtime files';; esac
+    [ "${#expected}" -eq 64 ] || fail 64 'Provide lowercase SHA-256 checksums for both Hytale runtime files'
+    [ -f "$file" ] && [ ! -L "$file" ] && [ -r "$file" ] || fail 65 'Hytale runtime file is missing, unreadable or a symlink'
+    actual=$(sha256sum "$file")
+    [ "${actual%% *}" = "$expected" ] || fail 65 'Hytale runtime checksum mismatch'
+}
+runtime=${HYTALE_RUNTIME_DIR:-/squab-runtime}
+case "$runtime" in /*) ;; *) fail 64 'HYTALE_RUNTIME_DIR must be absolute';; esac
+verify "$runtime/HytaleServer.jar" "${HYTALE_SERVER_SHA256:-}"
+verify "$runtime/Assets.zip" "${HYTALE_ASSETS_SHA256:-}"
+# The operator mounts versioned artifacts read-only; all mutable state stays in cwd (/data).
+umask 077
+export HYTALE_DISABLE_UPDATES=true
+exec java "-XX:MaxRAMPercentage=$heap" -jar "$runtime/HytaleServer.jar" \
+    --assets "$runtime/Assets.zip" --bind "0.0.0.0:$port" \
+    --auth-mode authenticated --disable-sentry

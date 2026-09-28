@@ -1,0 +1,31 @@
+services:
+  hytale:
+    # Set this to the published ghcr.io/squab-dev/squab-templates/hytale@sha256:... reference.
+    image: ${HYTALE_IMAGE:?Set a digest-pinned Hytale image}
+    user: '65532:65532'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    stop_grace_period: 60s
+    mem_limit: 6g
+    cpus: 3
+    ports: ['5520:5520/udp']
+    environment:
+      HYTALE_SERVER_SHA256: ${HYTALE_SERVER_SHA256:?Set the server JAR SHA-256}
+      HYTALE_ASSETS_SHA256: ${HYTALE_ASSETS_SHA256:?Set the assets SHA-256}
+    volumes:
+      - type: bind
+        source: ./runtime
+        target: /squab-runtime
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./data
+        target: /data
+        bind: {create_host_path: false}
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m,mode=1777
