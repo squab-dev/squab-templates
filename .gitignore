@@ -4,3 +4,8 @@ packages/
 *.rsa
 *.rsa.pub
 __pycache__/
+
+# Hytale operator-provided runtime, credentials and world state
+images/hytale/runtime/
+images/hytale/data/
+images/hytale/.env

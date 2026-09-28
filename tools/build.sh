@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 image=${1:-paper}
-[ "$image" = paper ] || { echo 'Unknown image' >&2; exit 64; }
+case "$image" in paper|hytale) ;; *) echo 'Unknown image' >&2; exit 64;; esac
 APKO=${APKO:-apko}
 MELANGE=${MELANGE:-melange}
 build="build/$image"
@@ -13,7 +13,7 @@ mkdir -p "$build/sbom"
   --signing-key "$build/build.rsa" --build-date 2026-09-16T00:00:00Z
 "$APKO" lock "images/$image/apko.yaml" --repository-append "$build/packages" \
   --keyring-append "$build/build.rsa.pub" --output "$build/resolved.lock.json"
-python3 tools/merge-lock.py "images/$image/wolfi.lock.json" "$build/resolved.lock.json" "$build/image.lock.json"
+python3 tools/merge-lock.py "images/$image/wolfi.lock.json" "$build/resolved.lock.json" "$build/image.lock.json" "squab-$image-launcher"
 "$APKO" build "images/$image/apko.yaml" "squab-$image:verify" "$build/image.tar" \
   --lockfile "$build/image.lock.json" --repository-append "$build/packages" \
   --keyring-append "$build/build.rsa.pub" --build-date 2026-09-16T00:00:00Z --sbom-path "$build/sbom"
