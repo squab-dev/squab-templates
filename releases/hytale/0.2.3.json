@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "b0e1c64d-43bc-4468-a704-dda1947c58a3",
+  "name": "Hytale 0.6.8",
+  "game": "hytale",
+  "game_version": "0.6.8",
+  "architectures": [
+    "amd64"
+  ],
+  "run_as": {
+    "uid": 65532,
+    "gid": 65532
+  },
+  "argv": [
+    "/usr/local/bin/squab-hytale-setup"
+  ],
+  "minimum_limits": {
+    "memory_mib": 6144,
+    "disk_mib": 16384,
+    "cpu_millicores": 3000
+  },
+  "ports": [
+    {
+      "name": "game",
+      "protocol": "udp",
+      "container_port": 5520
+    }
+  ],
+  "configuration_schema": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  },
+  "readiness": {
+    "kind": "container_health",
+    "port_name": "game",
+    "timeout_seconds": 900
+  },
+  "stop": {
+    "command": "stop",
+    "timeout_seconds": 120
+  },
+  "data_mount": "/data",
+  "capabilities": [
+    "console",
+    "files",
+    "stopped_backup"
+  ],
+  "test_only": false,
+  "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:6b51a15371b89bde92efa56938913a6d204ab2f9100afb82b2630b7471a6b106",
+  "revision_id": "a132996c-02d4-5e2b-9fdb-5c1d3f5459da"
+}

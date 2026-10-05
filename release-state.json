@@ -1,13 +1,13 @@
 {
-  "version": "v0.2.2",
-  "source": "eed3b4e184ac92233a5de032791d37c827e821d0",
+  "version": "v0.2.3",
+  "source": "b969f76fef8f846d69401db8609b7275eaf9ac8a",
   "release_tools": "88d5ca535403ed24b37c5807b6a2fe6ee7c9961ccd1f8d6aabe3edb14ce07350",
   "images": {
     "hytale": {
-      "build": "9faf4bde6550b4d0a4e80aee5ece0a570b46383b544476d6799caed1369d22db",
-      "template": null,
-      "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:5dea87e5f46e32b8ad13e91ed05d9f94c04ae69624084a7c4993652c56049747",
-      "manifest": null
+      "build": "a2a87969ad35d85890c07c01379585ffad57a11c6b825e9a7e2f0057869169f5",
+      "template": "86984b35137a3bcce59371367be724d1dbd0d61e5a5da4d68d110b36333915b0",
+      "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:6b51a15371b89bde92efa56938913a6d204ab2f9100afb82b2630b7471a6b106",
+      "manifest": "releases/hytale/0.2.3.json"
     },
     "palworld": {
       "build": "e254bbedaced3d168845467011cf00b3fc4b0678fdb55bda67791ecd9482478e",

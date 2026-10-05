@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "manifests": [
+    "releases/hytale/0.2.3.json",
     "releases/palworld/0.2.2.json",
     "releases/paper/0.2.2.json"
   ]
