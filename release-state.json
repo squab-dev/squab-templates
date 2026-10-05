@@ -1,0 +1,19 @@
+{
+  "version": "v0.2.1",
+  "source": "f4a1cf3d7e9599720d59fbfa640a7ac62fc760b3",
+  "release_tools": "fd08ddef7570a8a207fe14b2d3178b5548eb23fe53df42721ed002ba7613e940",
+  "images": {
+    "hytale": {
+      "build": "e53fdef94b01a601aa4c9acbeee5002126dd47eca5dfc1c492926e1f0748259d",
+      "template": null,
+      "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:be769dc597f4529a1b4dbb8619d21b8e75927289cb20b97ebaff0222789f4028",
+      "manifest": null
+    },
+    "paper": {
+      "build": "df378a49191a2ee79be305b636fdca40fb8d2b44cace892951122c38f15b57a7",
+      "template": "22f737a990736b83b5e9b94a948153b34fead33d79ea753781c39a398a81ecfd",
+      "image": "ghcr.io/squab-dev/squab-templates/paper@sha256:71576f63c49eb3fb0d70a7e413f6c047e26ff509b0293d0ab7d161ac11e6f7b2",
+      "manifest": "releases/paper/0.2.1.json"
+    }
+  }
+}
