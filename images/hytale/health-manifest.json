@@ -1,0 +1,8 @@
+{
+  "Group": "Squab",
+  "Name": "Readiness",
+  "Version": "0.1.0",
+  "Main": "dev.squab.hytale.HealthPlugin",
+  "ServerVersion": "=0.6.8",
+  "Dependencies": { "Hytale:Universe": "*" }
+}

@@ -1,0 +1,265 @@
+#!/usr/bin/python3
+"""Per-server Hytale installation and device login; no shared credentials."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import sys
+import tempfile
+import threading
+import urllib.request
+import uuid
+
+TOOLS = Path('/opt/squab-hytale')
+PIN = TOOLS / 'bootstrap.json'
+MAX_ASSETS_BYTES = 8 * 1024**3
+ANSI = re.compile(r'\x1b\[[0-9;]*m')
+child = None
+stopping = False
+
+
+class SetupError(Exception):
+    """A safe diagnostic with no account data or caller-provided values."""
+
+
+def fail(message):
+    raise SetupError(message)
+
+
+def regular(path):
+    if path.is_symlink() or not path.is_file() or path.parent.is_symlink():
+        fail('A Hytale runtime file is missing or is a symlink')
+
+
+def digest(path):
+    regular(path)
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def directory(path):
+    if path.is_symlink():
+        fail('Hytale setup directories must not be symlinks')
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not path.is_dir():
+        fail('Invalid Hytale setup directory')
+
+
+def atomic_json(path, value):
+    fd, name = tempfile.mkstemp(prefix='.squab-', dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(value, stream)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch_bootstrap(path, pin):
+    if path.exists() or path.is_symlink():
+        if digest(path) == pin['sha256'] and path.stat().st_size == pin['size']:
+            return
+        fail('The saved Hytale bootstrap file does not match this template')
+    fd, name = tempfile.mkstemp(prefix='.download-', dir=path.parent)
+    temporary = Path(name)
+    try:
+        request = urllib.request.Request(pin['url'], headers={'User-Agent': 'Squab-Hytale/1'})
+        with os.fdopen(fd, 'wb') as stream:
+            with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
+                if response.status != 200:
+                    fail('Hytale bootstrap download failed')
+                size = 0
+                while chunk := response.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > pin['size']:
+                        fail('Hytale bootstrap download exceeds the pinned size')
+                    stream.write(chunk)
+        if size != pin['size'] or digest(temporary) != pin['sha256']:
+            fail('Hytale bootstrap download does not match this template')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def command(line):
+    process = child
+    if process is not None and process.poll() is None and process.stdin is not None:
+        try:
+            process.stdin.write(line + '\n')
+            process.stdin.flush()
+        except (BrokenPipeError, OSError):
+            pass
+
+
+def terminate(_signal, _frame):
+    global stopping
+    stopping = True
+    command('stop')
+
+
+def forward_input():
+    for line in sys.stdin:
+        command(line.rstrip('\n'))
+
+
+def run_java(arguments, cwd, bootstrap=False):
+    global child
+    temporary = cwd / '.tmp'
+    directory(temporary)
+    environment = dict(os.environ)
+    environment['HYTALE_DISABLE_UPDATES'] = 'false' if bootstrap else 'true'
+    child = subprocess.Popen(['java', f'-Djava.io.tmpdir={temporary}', *arguments], cwd=cwd, env=environment,
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, text=True, bufsize=1)
+    install_requested = False
+    assert child.stdout is not None
+    for line in iter(lambda: child.stdout.readline(65536), ''):
+        print(line, end='', flush=True)
+        plain = ANSI.sub('', line).strip()
+        plain = re.sub(r'^\[[^\]]+\]\s+\[[^\]]+\]\s*', '', plain)
+        if bootstrap and not install_requested and (
+                plain.startswith('Authentication successful!') or
+                plain.startswith('Server is already authenticated.')):
+            install_requested = True
+            print('[Squab] Signed in. Downloading this server’s game files.', flush=True)
+            command('update setup')
+        if bootstrap and plain.startswith('Multiple profiles available.'):
+            print('[Squab] Stop this server, set {"uuid":"your-profile-uuid"} in game/profile.json using Files, then start again.', flush=True)
+    result = child.wait()
+    child = None
+    return result
+
+
+def settings():
+    for key in ['JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS', 'JVM_ARGS',
+                'HYTALE_SERVER_SESSION_TOKEN', 'HYTALE_SERVER_IDENTITY_TOKEN']:
+        if os.environ.get(key):
+            fail('Use per-server Hytale sign-in; injected tokens and JVM arguments are unsupported')
+    try:
+        port = int(os.environ.get('HYTALE_PORT', '5520'))
+        heap = int(os.environ.get('HYTALE_HEAP_PERCENT', '75'))
+        owner = os.environ.get('HYTALE_OWNER_UUID', '')
+        profile = Path.cwd() / 'game' / 'profile.json'
+        if not owner and (profile.exists() or profile.is_symlink()):
+            regular(profile)
+            if profile.stat().st_size > 256:
+                fail('Invalid Hytale profile file')
+            value = json.loads(profile.read_text())
+            if not isinstance(value, dict) or set(value) != {'uuid'} or not isinstance(value['uuid'], str):
+                fail('Invalid Hytale profile file')
+            owner = value['uuid']
+        if owner and str(uuid.UUID(owner)) != owner:
+            fail('Invalid Hytale profile UUID')
+    except ValueError:
+        fail('Invalid Hytale port, heap or profile setting')
+    if not 1024 <= port <= 65535 or port == 5521 or not 25 <= heap <= 85:
+        fail('Invalid Hytale port or heap setting')
+    return port, heap, ['--owner-uuid', owner] if owner else []
+
+
+def installed_files(game):
+    return [game / 'Server' / 'HytaleServer.jar', game / 'Assets.zip']
+
+
+def record_install(game, receipt, pin):
+    files = installed_files(game)
+    for path, maximum in zip(files, [128 * 1024**2, MAX_ASSETS_BYTES]):
+        regular(path)
+        if not 0 < path.stat().st_size <= maximum:
+            fail('Hytale game files exceed the supported size')
+    version = subprocess.run(['java', '-jar', str(files[0]), '--version'],
+                             capture_output=True, text=True, timeout=30, check=True)
+    if version.stdout.strip() != f"HytaleServer v{pin['version']} (release)":
+        fail('Downloaded Hytale version differs from this template. Select an updated template.')
+    atomic_json(receipt, {'version': pin['version'], 'files': [
+        {'path': str(p.relative_to(game)), 'size': p.stat().st_size, 'sha256': digest(p)} for p in files]})
+
+
+def verify_install(game, receipt, pin):
+    regular(receipt)
+    record = json.loads(receipt.read_text())
+    if not isinstance(record, dict) or record.get('version') != pin['version']:
+        fail('The installed Hytale version differs from this template')
+    entries = record.get('files', [])
+    expected = installed_files(game)
+    if not isinstance(entries, list) or len(entries) != len(expected):
+        fail('Invalid Hytale installation receipt')
+    for path, entry in zip(expected, entries):
+        regular(path)
+        if (not isinstance(entry, dict) or entry.get('path') != str(path.relative_to(game)) or
+                path.stat().st_size != entry.get('size') or digest(path) != entry.get('sha256')):
+            fail('Installed Hytale files changed; restore the verified files before starting')
+
+
+def healthcheck():
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:5521/ready', timeout=2) as response:
+            return response.status == 200 and json.loads(response.read(1024)) == {'ready': True}
+    except (OSError, ValueError):
+        return False
+
+
+def main():
+    if sys.argv[1:] == ['--healthcheck']:
+        return 0 if healthcheck() else 1
+    if sys.argv[1:]:
+        fail('Configure Hytale through supported settings, not extra arguments')
+    port, heap, profile = settings()
+    os.umask(0o077)
+    for sig in [signal.SIGTERM, signal.SIGINT]:
+        signal.signal(sig, terminate)
+    threading.Thread(target=forward_input, daemon=True).start()
+    pin = json.loads(PIN.read_text())
+    game = Path.cwd() / 'game'
+    directory(game)
+    if (game / 'Server').is_symlink():
+        fail('Hytale server directory must not be a symlink')
+    receipt = game / 'squab-install.json'
+    if not receipt.exists() and not receipt.is_symlink():
+        if not all(p.exists() for p in installed_files(game)):
+            bootstrap = game / 'HytaleServer.jar'
+            fetch_bootstrap(bootstrap, pin)
+            for name in ['permissions.json', 'config.json']:
+                if not (game / name).exists():
+                    atomic_json(game / name, {})
+            print('[Squab] Open the Hytale link shown below and sign in with your own account.', flush=True)
+            result = run_java(['-Xmx1G', '-jar', str(bootstrap), '--bootstrap', '--disable-sentry',
+                               *profile, '--boot-command', 'auth persistence Encrypted',
+                               '--boot-command', 'auth login device'], game, bootstrap=True)
+            if stopping:
+                return result
+            if result not in [0, 8]:
+                fail('Hytale setup did not finish. Restart to request a new sign-in link.')
+        record_install(game, receipt, pin)
+    verify_install(game, receipt, pin)
+    server = game / 'Server'
+    print('[Squab] Starting your Hytale server. Sign-in belongs only to this server.', flush=True)
+    return run_java([f'-XX:MaxRAMPercentage={heap}', '-jar', str(server / 'HytaleServer.jar'),
+                     '--assets', str(game / 'Assets.zip'), '--bind', f'0.0.0.0:{port}',
+                     '--auth-mode', 'authenticated', '--disable-sentry',
+                     '--mods', str(TOOLS / 'plugins'), *profile,
+                     '--boot-command', 'auth persistence Encrypted',
+                     '--boot-command', 'auth login device'], server)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except SetupError as error:
+        print(f'[Squab] {error}', file=sys.stderr)
+        sys.exit(65)
+    except (ValueError, OSError, subprocess.SubprocessError):
+        print('[Squab] Hytale setup failed. Check setup messages and restart after correcting files/settings.', file=sys.stderr)
+        sys.exit(65)

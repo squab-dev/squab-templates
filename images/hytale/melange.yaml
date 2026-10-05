@@ -1,13 +1,14 @@
 package:
   name: squab-hytale-launcher
-  version: 0.1.0
+  version: 0.2.0
   epoch: 0
-  description: Squab launcher for the operator-supplied Hytale runtime
+  description: Squab Hytale per-server installation, sign-in and readiness
   copyright:
     - license: LicenseRef-Proprietary
   dependencies:
     runtime:
       - busybox
+      - python-3.14
 environment:
   contents:
     keyring:
@@ -16,6 +17,25 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
+      - ca-certificates-bundle
+      - openjdk-25=25.0.4.1-r1
+      - python-3.14
 pipeline:
   - runs: |
+      python3 - <<'PY'
+      import hashlib, json, urllib.request
+      pin = json.load(open('bootstrap.json'))
+      request = urllib.request.Request(pin['url'], headers={'User-Agent': 'Squab-Hytale/1'})
+      with urllib.request.urlopen(request, timeout=60) as response:
+          data = response.read(pin['size'] + 1)
+      assert len(data) == pin['size'] and hashlib.sha256(data).hexdigest() == pin['sha256']
+      open('/tmp/hytale-sdk.jar', 'wb').write(data)
+      PY
+      mkdir -p classes
+      /usr/lib/jvm/java-25-openjdk/bin/javac -cp /tmp/hytale-sdk.jar -d classes HealthPlugin.java
+      cp health-manifest.json classes/manifest.json
+      /usr/lib/jvm/java-25-openjdk/bin/jar --create --date=2026-09-16T00:00:00Z --file readiness.jar -C classes .
       install -Dm0555 squab-hytale-launcher "${{targets.destdir}}/usr/local/bin/squab-hytale-launcher"
+      install -Dm0555 squab-hytale-setup "${{targets.destdir}}/usr/local/bin/squab-hytale-setup"
+      install -Dm0444 bootstrap.json "${{targets.destdir}}/opt/squab-hytale/bootstrap.json"
+      install -Dm0444 readiness.jar "${{targets.destdir}}/opt/squab-hytale/plugins/readiness.jar"

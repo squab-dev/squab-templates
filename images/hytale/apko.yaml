@@ -8,7 +8,8 @@ contents:
     - busybox
     - ca-certificates-bundle
     - openjdk-25-jre=25.0.4.1-r1
-    - squab-hytale-launcher=0.1.0-r0
+    - python-3.14
+    - squab-hytale-launcher=0.2.0-r0
 accounts:
   groups:
     - groupname: squab
@@ -20,7 +21,7 @@ accounts:
   run-as: 65532
 work-dir: /data
 entrypoint:
-  command: /usr/local/bin/squab-hytale-launcher
+  command: /usr/local/bin/squab-hytale-setup
 environment:
   HOME: /data
   HYTALE_DISABLE_UPDATES: "true"
