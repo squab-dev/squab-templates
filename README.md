@@ -7,6 +7,7 @@ verify and release them. Images run as a non-root user and target **linux/amd64*
 | Runtime | Image package | Core catalog |
 | --- | --- | --- |
 | [Paper](images/paper/README.md) | `ghcr.io/squab-dev/squab-templates/paper` | Minecraft Java 26.2, build 129 |
+| [Palworld](images/palworld/README.md) | `ghcr.io/squab-dev/squab-templates/palworld` | Palworld 1.0.5.102999; requires Wing protocol 1.5 |
 | [Hytale](images/hytale/README.md) | `ghcr.io/squab-dev/squab-templates/hytale` | Runtime image only; authenticated game files are supplied separately |
 
 ## Repository layout
@@ -124,7 +125,7 @@ the default schedule is every five minutes). No GitHub token is needed for the p
 its existing entries on fetch failures and rejects changed content for an
 existing revision. A new release does not upgrade running servers automatically.
 
-This repository uses the template contract from specification **0.3.15**.
+This repository uses the template contract from specification **0.3.16**.
 **Deploy Core 0.9.1 once before enabling this update** to remove its old Paper
 build allowlist. After that, new compatible templates and image versions become
 available through catalog sync without another Core release or restart. The

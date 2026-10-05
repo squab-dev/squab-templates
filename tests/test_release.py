@@ -39,7 +39,7 @@ class ReleaseTests(unittest.TestCase):
             shutil.copyfile(ROOT / name, self.root / name)
         subprocess.run(['git', 'init', '-q', str(self.root)], check=True)
         self.artifacts = Path(self.temp.name) / 'artifacts'
-        for game in ('paper', 'hytale'):
+        for game in ('paper', 'hytale', 'palworld'):
             target = self.artifacts / f'image-{game}' / 'image-reference.txt'
             target.parent.mkdir(parents=True)
             target.write_text(image(game) + '\n')
@@ -71,7 +71,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertFalse(release.plan(self.root)['release'])
 
     def test_each_game_change_only_rebuilds_its_own_image(self):
-        for game in ('paper', 'hytale'):
+        for game in ('paper', 'hytale', 'palworld'):
             with self.subTest(game=game):
                 path = self.root / f'images/{game}/squab-{game}-launcher'
                 original = path.read_bytes()
@@ -81,7 +81,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_shared_build_change_rebuilds_all_images(self):
         self.edit('tools/build.sh')
-        self.assertEqual(release.plan(self.root)['build'], ['hytale', 'paper'])
+        self.assertEqual(release.plan(self.root)['build'], ['hytale', 'palworld', 'paper'])
 
     def test_publisher_change_releases_without_rebuilding_images(self):
         self.edit('tools/publish-release.py')
@@ -132,7 +132,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(before['images']['paper'], after['images']['paper'])
         self.assertFalse((output / 'releases').exists())
         self.assertEqual(release.read_json(output / 'catalog.json')['manifests'],
-                         [before['images']['paper']['manifest']])
+                         [data['manifest'] for game, data in sorted(before['images'].items()) if data['manifest']])
 
     def test_existing_release_path_cannot_be_overwritten(self):
         self.edit('images/paper/squab-paper-launcher')
@@ -154,7 +154,7 @@ class ReleaseTests(unittest.TestCase):
             index = json.load(archive.extractfile('catalog.json'))
             for path in index['manifests']:
                 manifest = json.load(archive.extractfile(path))
-                self.assertEqual(manifest['image'], image('paper'))
+                self.assertEqual(manifest['image'], image(Path(path).parts[1]))
 
     def test_version_uses_highest_stable_tag(self):
         self.assertEqual(release.next_version(['v0.2.9', 'v0.2.10', 'v0.3.0-rc.1']), 'v0.2.11')

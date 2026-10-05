@@ -34,7 +34,9 @@ jobs:
       - run: make check build GAME="$GAME"
       - name: Load and smoke test image
         run: |
-          docker load -i "build/$GAME/image.tar"
+          if [ -f "build/$GAME/image.tar" ]; then
+            docker load -i "build/$GAME/image.tar"
+          fi
           make smoke GAME="$GAME"
       - name: Scan image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -52,6 +54,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Record complete image SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: squab-${{ inputs.game }}:verify-amd64
+          version: v0.74.0
+          format: spdx-json
+          output: build/${{ inputs.game }}/sbom/complete-image.spdx.json
       - name: Publish verified image
         if: inputs.publish && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |

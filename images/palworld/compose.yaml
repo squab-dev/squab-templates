@@ -1,0 +1,25 @@
+services:
+  palworld:
+    image: ${PALWORLD_IMAGE:?Set a digest-pinned Palworld image}
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stdin_open: true
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 120s
+    mem_limit: 16g
+    cpus: 4
+    pids_limit: 512
+    environment:
+      PALWORLD_SERVER_NAME: Squab Palworld
+      PALWORLD_PLAYERS: "32"
+    ports:
+      - "8211:8211/udp"
+    volumes:
+      - saves:/data
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+volumes:
+  saves:

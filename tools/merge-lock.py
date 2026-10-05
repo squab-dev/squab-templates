@@ -5,7 +5,7 @@ from pathlib import Path
 
 base, resolved, output = map(Path, sys.argv[1:4])
 launcher = sys.argv[4] if len(sys.argv) == 5 else "squab-paper-launcher"
-if launcher not in {"squab-paper-launcher", "squab-hytale-launcher"}:
+if launcher not in {"squab-paper-launcher", "squab-hytale-launcher", "squab-palworld-launcher"}:
     raise SystemExit("unknown launcher")
 lock = json.loads(base.read_text())
 fresh = json.loads(resolved.read_text())

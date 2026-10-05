@@ -9,3 +9,4 @@ __pycache__/
 images/hytale/runtime/
 images/hytale/data/
 images/hytale/.env
+images/palworld/.env

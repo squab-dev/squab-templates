@@ -234,7 +234,8 @@
           "type": "string",
           "enum": [
             "fake_protocol",
-            "minecraft_status"
+            "minecraft_status",
+            "container_health"
           ]
         },
         "port_name": {
