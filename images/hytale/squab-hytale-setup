@@ -116,6 +116,8 @@ def forward_input():
 
 def run_java(arguments, cwd, bootstrap=False):
     global child
+    if stopping:
+        return 0
     temporary = cwd / '.tmp'
     directory(temporary)
     environment = dict(os.environ)
@@ -123,6 +125,8 @@ def run_java(arguments, cwd, bootstrap=False):
     child = subprocess.Popen(['java', f'-Djava.io.tmpdir={temporary}', *arguments], cwd=cwd, env=environment,
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, text=True, bufsize=1)
+    if stopping:
+        command('stop')
     install_requested = False
     assert child.stdout is not None
     for line in iter(lambda: child.stdout.readline(65536), ''):

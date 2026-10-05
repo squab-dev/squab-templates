@@ -144,6 +144,12 @@ class HytaleSetupTests(unittest.TestCase):
         self.assertEqual(child.stdin.getvalue(), 'update setup\n')
         self.assertEqual(spawn.call_args.kwargs['env']['HYTALE_DISABLE_UPDATES'], 'false')
 
+    def test_stop_during_download_or_integrity_check_prevents_next_java_launch(self):
+        setup.terminate(None, None)
+        with patch.object(setup.subprocess, 'Popen') as spawn:
+            self.assertEqual(setup.run_java([], self.root), 0)
+            spawn.assert_not_called()
+
     def test_health_refuses_missing_unhealthy_or_invalid_response(self):
         with patch.object(setup.urllib.request, 'urlopen', side_effect=OSError):
             self.assertFalse(setup.healthcheck())
