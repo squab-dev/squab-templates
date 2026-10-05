@@ -7,6 +7,6 @@ build:
 test:
 	python3 -m unittest discover -s tests -v
 check: test
-	sh -n tools/build.sh tools/install-tools.sh tools/smoke.sh images/paper/squab-paper-launcher images/hytale/squab-hytale-launcher tools/smoke-hytale.sh
+	sh -n tools/build.sh tools/install-tools.sh tools/smoke.sh images/paper/squab-paper-launcher images/hytale/squab-hytale-launcher tools/smoke-hytale.sh tools/smoke-palworld.sh
 smoke:
-	sh tools/smoke$(if $(filter hytale,$(GAME)),-hytale,).sh
+	sh tools/smoke$(if $(filter paper,$(GAME)),,-$(GAME)).sh

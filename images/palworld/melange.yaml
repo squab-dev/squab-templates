@@ -1,0 +1,21 @@
+package:
+  name: squab-palworld-launcher
+  version: 0.1.0
+  epoch: 0
+  description: Squab Palworld lifecycle and readiness adapter
+  copyright:
+    - license: LicenseRef-Proprietary
+  dependencies:
+    runtime:
+      - python-3.14
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+pipeline:
+  - runs: |
+      install -Dm0555 squab-palworld-launcher "${{targets.destdir}}/usr/local/bin/squab-palworld-launcher"

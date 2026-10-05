@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Run the pinned Palworld server and translate bounded stdin lifecycle commands."""
+import base64
+import http.client
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+RUNTIME = Path('/opt/palworld')
+DATA = Path('/data')
+AUTH = Path('/tmp/palworld-rest-password')
+API_PORT = 8212
+MAX_SETTINGS = 65536
+
+
+def settings_fields(text):
+    """Split Unreal's tuple without splitting quoted strings or nested tuples."""
+    fields, start, depth, quoted, escaped = [], 0, 0, False, False
+    for index, char in enumerate(text):
+        if escaped:
+            escaped = False
+        elif quoted and char == '\\':
+            escaped = True
+        elif char == '"':
+            quoted = not quoted
+        elif not quoted:
+            if char == '(':
+                depth += 1
+            elif char == ')':
+                depth -= 1
+                if depth < 0:
+                    raise ValueError('Invalid settings tuple')
+            elif char == ',' and depth == 0:
+                fields.append(text[start:index].strip())
+                start = index + 1
+    if quoted or escaped or depth:
+        raise ValueError('Invalid settings tuple')
+    fields.append(text[start:].strip())
+    result = {}
+    for field in fields:
+        if not field:
+            continue
+        key, sep, value = field.partition('=')
+        if not sep or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', key.strip()):
+            raise ValueError('Invalid settings field')
+        result[key.strip()] = value.strip()
+    return result
+
+
+def atomic_private(path, value):
+    temporary = path.with_name(path.name + '.squab-' + secrets.token_hex(8))
+    try:
+        with temporary.open('x', encoding='utf-8') as stream:
+            stream.write(value)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def configure(data, password, server_name, players):
+    directory = data / 'Config/LinuxServer'
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / 'PalWorldSettings.ini'
+    settings = {}
+    if path.exists() or path.is_symlink():
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_SETTINGS:
+            raise ValueError('Invalid settings file')
+        text = path.read_text()
+        tuples = re.findall(r'^\s*OptionSettings\s*=\s*\((.*)\)\s*$', text, re.MULTILINE)
+        if len(tuples) != 1:
+            raise ValueError('Expected one OptionSettings tuple')
+        settings = settings_fields(tuples[0])
+    # Retain gameplay settings, but always own authentication and management ports.
+    settings.update(ServerName=json.dumps(server_name, ensure_ascii=False),
+                    ServerPlayerMaxNum=str(players), AdminPassword=json.dumps(password),
+                    RESTAPIEnabled='True', RESTAPIPort=str(API_PORT),
+                    RCONEnabled='False', bUseAuth='True')
+    atomic_private(path, '[/Script/Pal.PalGameWorldSettings]\nOptionSettings=('
+                   + ','.join(key + '=' + value for key, value in settings.items()) + ')\n')
+
+
+def api(method, endpoint, payload=None):
+    password = AUTH.read_text().strip()
+    if not re.fullmatch('[0-9a-f]{64}', password):
+        raise ValueError('Invalid management credential')
+    authorization = base64.b64encode(('admin:' + password).encode()).decode()
+    connection = http.client.HTTPConnection('127.0.0.1', API_PORT, timeout=2)
+    try:
+        connection.request(method, '/v1/api/' + endpoint,
+                           None if payload is None else json.dumps(payload),
+                           {'Authorization': 'Basic ' + authorization,
+                            'Content-Type': 'application/json'})
+        response = connection.getresponse()
+        body = response.read(MAX_SETTINGS + 1)
+        if response.status != 200 or len(body) > MAX_SETTINGS:
+            raise ValueError('Management request failed')
+        return body
+    finally:
+        connection.close()
+
+
+def healthy():
+    status = json.loads(api('GET', 'info'))
+    return (isinstance(status, dict)
+            and all(isinstance(status.get(key), str) and status[key]
+                    for key in ('version', 'worldguid')))
+
+
+def integer(name, default, lower, upper):
+    value = os.environ.get(name, str(default))
+    if not value.isascii() or not value.isdecimal() or not lower <= int(value) <= upper:
+        raise ValueError('Invalid ' + name)
+    return int(value)
+
+
+def main():
+    os.umask(0o077)
+    if sys.argv[1:] == ['--healthcheck']:
+        return 0 if healthy() else 1
+    if sys.argv[1:]:
+        raise ValueError('Extra arguments are not supported')
+    port = integer('PALWORLD_PORT', 8211, 1024, 65535)
+    if port == API_PORT:
+        raise ValueError('Game port conflicts with management port')
+    players = integer('PALWORLD_PLAYERS', 32, 1, 32)
+    server_name = os.environ.get('PALWORLD_SERVER_NAME', 'Squab Palworld')
+    if not 1 <= len(server_name) <= 120 or any(ord(c) < 32 for c in server_name):
+        raise ValueError('Invalid server name')
+    password = secrets.token_hex(32)
+    configure(DATA, password, server_name, players)
+    atomic_private(AUTH, password)
+    steam = Path('/tmp/palworld/.steam/sdk64')
+    steam.mkdir(parents=True, exist_ok=True)
+    client = steam / 'steamclient.so'
+    if not client.exists():
+        client.symlink_to(RUNTIME / 'linux64/steamclient.so')
+    shutdown = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: shutdown.set())
+    signal.signal(signal.SIGINT, lambda *_: shutdown.set())
+    child = subprocess.Popen([str(RUNTIME / 'Pal/Binaries/Linux/PalServer-Linux-Shipping'),
+                              'Pal', '-port=' + str(port), '-players=' + str(players),
+                              '-logformat=text'], cwd=RUNTIME, stdin=subprocess.DEVNULL)
+
+    def console():
+        while True:
+            line = sys.stdin.readline(4097)
+            if not line:
+                return
+            if len(line) > 4096:
+                print('Console command is too long', flush=True)
+                return
+            command = line.strip()
+            if command == 'stop':
+                shutdown.set()
+            elif command == 'save':
+                try:
+                    api('POST', 'save')
+                    print('World saved', flush=True)
+                except (OSError, ValueError, http.client.HTTPException):
+                    print('World save failed', flush=True)
+            else:
+                print('Supported console commands: save, stop', flush=True)
+
+    threading.Thread(target=console, daemon=True).start()
+    requested = False
+    while child.poll() is None:
+        if shutdown.is_set() and not requested:
+            try:
+                api('POST', 'save')
+                api('POST', 'shutdown', {'waittime': 1, 'message': 'Server stopping'})
+                requested = True
+            except (OSError, ValueError, http.client.HTTPException):
+                # Keep retrying while starting; Wing/Compose owns the force-stop deadline.
+                pass
+        time.sleep(0.25)
+    return child.returncode
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, http.client.HTTPException):
+        # Never log credentials, raw API responses or user-controlled configuration.
+        print('Palworld launcher validation or management request failed', file=sys.stderr)
+        sys.exit(64)

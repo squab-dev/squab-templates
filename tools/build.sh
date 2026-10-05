@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 image=${1:-paper}
-case "$image" in paper|hytale) ;; *) echo 'Unknown image' >&2; exit 64;; esac
+case "$image" in paper|hytale|palworld) ;; *) echo 'Unknown image' >&2; exit 64;; esac
 APKO=${APKO:-apko}
 MELANGE=${MELANGE:-melange}
 build="build/$image"
@@ -17,3 +17,10 @@ python3 tools/merge-lock.py "images/$image/wolfi.lock.json" "$build/resolved.loc
 "$APKO" build "images/$image/apko.yaml" "squab-$image:verify" "$build/image.tar" \
   --lockfile "$build/image.lock.json" --repository-append "$build/packages" \
   --keyring-append "$build/build.rsa.pub" --build-date 2026-09-16T00:00:00Z --sbom-path "$build/sbom"
+if [ -f "images/$image/runtime.Dockerfile" ]; then
+  docker load -i "$build/image.tar"
+  docker build --platform linux/amd64 --file "images/$image/runtime.Dockerfile" \
+    --tag "squab-$image:verify-amd64" "images/$image"
+  # The final game image is already loaded. Avoid a second multi-GB archive.
+  rm "$build/image.tar"
+fi
