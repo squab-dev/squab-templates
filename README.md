@@ -1,178 +1,141 @@
 # Squab templates
 
-Curated game runtime images and versioned catalog manifests for Squab. Each game
-owns its launcher, image composition and pinned dependencies; shared tools build,
-verify and release them. Images run as a non-root user and target **linux/amd64**.
+Game runtime images and versioned catalog manifests for Squab. Each runtime owns
+its launcher, dependencies and usage instructions; shared tooling builds, verifies
+and releases the catalog.
 
-| Runtime | Image package | Core catalog |
-| --- | --- | --- |
-| [Paper](images/paper/README.md) | `ghcr.io/squab-dev/squab-templates/paper` | Minecraft Java 26.2, build 129 |
-| [Palworld](images/palworld/README.md) | `ghcr.io/squab-dev/squab-templates/palworld` | Palworld 1.0.5.102999; requires Wing protocol 1.5 |
-| [Hytale](images/hytale/README.md) | `ghcr.io/squab-dev/squab-templates/hytale` | Hytale 0.6.8; each server owner signs in on first start |
+Browse [`images/`](images/) for the available runtimes and their documentation.
+Use the [latest release](https://github.com/squab-dev/squab-templates/releases/latest)
+for a published catalog, or [`catalog.json`](catalog.json) for the current index.
+Supported versions, requirements, authentication and update behavior belong in each
+runtime's README and release manifest.
 
 ## Repository layout
 
 ```text
-images/<game>/
+images/<runtime>/             # runtime source and usage documentation
   apko.yaml                   # image composition and non-root identity
-  wolfi.lock.json              # reviewed remote APK versions/checksums
+  wolfi.lock.json             # reviewed dependency versions and checksums
   melange.yaml                # launcher package build
-  runtime.Dockerfile          # optional pinned upstream game payload composition
-  squab-<game>-launcher        # runtime entrypoint
-  template.json               # optional Core metadata, without an image digest
-  README.md                   # game-specific usage and constraints
-tools/                        # shared build, release and verification tools
-tests/                        # launcher, catalog and release regression tests
-api/vendor/                   # pinned template schema and specification version
-releases/<game>/<version>.json # immutable published manifests
-catalog.json                  # release-generated index, latest revision per template
-release-state.json            # generated after the first automated release
+  runtime.Dockerfile          # optional additional image composition
+  template.json               # catalog metadata without an image digest
+  README.md                   # runtime-specific instructions
+artwork/                      # catalog artwork and source attribution
+tools/                        # shared build, verification and release tooling
+tests/                        # runtime, catalog and release regression tests
+api/vendor/                   # pinned template contract and provenance
+releases/<runtime>/<version>.json # immutable published manifests
+catalog.json                  # release-generated index of published revisions
+release-state.json            # fingerprints and references from the last release
 ```
 
 ## Build and verify
 
-On Linux amd64, install Python 3, bubblewrap and Docker (or Podman), plus apko
-1.4.6 and melange 0.61.2. With mise:
+Use Linux amd64 with Python 3, bubblewrap and Docker. Install the pinned build
+tools with mise:
 
 ```sh
 mise use -g apko@1.4.6 melange@0.61.2
 python3 -m pip install -r requirements-dev.txt
 make check
-make build GAME=paper
-# Or: make build GAME=hytale
-docker load -i build/paper/image.tar
-make smoke GAME=paper
-# Podman: CONTAINER_ENGINE=podman make smoke GAME=paper
 ```
 
-For Palworld, use `make build smoke GAME=palworld`. Its composed image is loaded
-directly into Docker instead of retaining a second multi-gigabyte archive.
+Alternatively, `make tools` installs checksum-verified tools in `.tools/bin`;
+add that directory to `PATH` before building.
 
-`make tools` installs the same checksum-verified build tools under `.tools/bin`
-for CI or environments without mise; add that directory to `PATH` before building.
-Game files, launch requirements and Compose examples belong in each runtime's
-README. Build output, SBOMs and ephemeral APK signing keys stay in ignored
-`build/`; signing keys are never published.
+Choose a directory from `images/` and use its name in place of `<runtime>`:
 
-The committed lock freezes all runtime Wolfi packages, including transitive
-dependencies. Builds replace only the local launcher package entry. Changing
-`apko.yaml` requires an explicit lock update: resolve with `apko lock` using the
-local package repository/key produced by `tools/build.sh`, remove its local
-launcher entry, and review the config checksum and remote package changes before
-committing. A launcher-only package revision may keep the reviewed remote package
-entries unchanged. The launcher build environment resolves from Wolfi; image
-digests can differ across builds because of signing/provenance metadata.
+```sh
+make build GAME=<runtime>
+```
 
-## Automatic releases
+When the build produces `build/<runtime>/image.tar`, load it with
+`docker load -i build/<runtime>/image.tar`. Composed images are loaded by the build
+script directly. Run `make smoke GAME=<runtime>` afterward. Follow that runtime's
+README for setup, persistent storage, launch requirements and additional checks.
+
+Build output, SBOMs and ephemeral package-signing keys stay in ignored `build/`;
+signing keys are never published. Runtime dependencies are locked, including
+transitive packages. Changes to image composition require a reviewed lock update;
+launcher-only changes can retain the existing remote package pins.
+
+## Releases and selective builds
 
 Pull requests validate the catalog and release tooling, then build, smoke-test
-and scan changed images. They do not publish packages or releases. On `main`,
-successful image/template changes automatically publish the next patch tag and
-GitHub Release (for example, `v0.2.0` → `v0.2.1`). README, tests and Compose-only
-changes run checks without a new release when no earlier changes are pending.
+and scan affected images. On `main`, verified image or template changes publish
+a new patch tag and GitHub Release automatically.
 
 | Change since the last release | Image builds | New release |
 | --- | --- | --- |
-| One game's launcher, apko config or dependency lock | That game | Yes |
-| Shared build tools or image build workflow | All affected games | Yes |
-| `template.json` metadata | None; reuse its published digest | Yes |
-| Catalog/release tooling or schema | None | Yes |
-| Documentation, tests or local Compose example | None | No |
+| Runtime launcher, composition or dependency lock | Changed runtime only | Yes |
+| Shared build tools or image workflow | All affected runtimes | Yes |
+| Template metadata | None; reuse the published image digest | Yes |
+| Catalog/release tooling or contract | None | Yes |
+| Documentation, tests or local Compose examples | None | No |
 
-The workflow compares input fingerprints against `release-state.json`, so failed
-or superseded runs leave changes pending. The first automated release establishes
-that state and builds all configured images. Later releases carry forward unchanged
-image digests. Each built image must pass smoke checks and the HIGH/CRITICAL
-fixed-vulnerability scan before it can enter a release. Verified images are pushed
-to `ghcr.io/squab-dev/squab-templates/<game>:sha-<source-commit>`; catalog manifests
-always use the actual registry digest.
+The release planner compares fingerprints with `release-state.json`. Failed or
+superseded runs leave changes pending; unchanged images retain their published
+digests. Each rebuilt image must pass its smoke checks and the scan for fixable
+HIGH/CRITICAL vulnerabilities before publication.
 
-The release job generates `catalog.json`, new immutable manifests and
-`release-state.json`. It commits those files to `main` and atomically pushes an
-annotated release tag at that commit. The workflow's `GITHUB_TOKEN` needs package
-write access for builds and content write access for publication; branch rules
-must permit the release bot's generated commit. The generated commit skips CI
-and does not recursively trigger another release. A newer push to `main` causes
-an obsolete release run to defer to the next run instead of overwriting it.
+The release job generates new immutable manifests, `catalog.json` and
+`release-state.json`, commits them to `main`, and atomically pushes an annotated
+tag at that commit. Generated commits do not trigger another release. A newer
+source commit causes an obsolete release run to defer instead of overwriting it.
 
-Each GitHub Release contains `catalog.json`, `release-state.json`, and
-`catalog.tar.gz` with the index and referenced manifests in their relative paths.
-The tag is an immutable source for the same catalog. SBOMs and build evidence are
-available in workflow artifacts. If GitHub Release publication fails after the
-tag/catalog push, rerun that source workflow: it resumes from the tag, repairs a
-draft if needed, and does not rebuild or alter published revisions. The catalog
-can be visible before the GitHub Release API step completes; its images have
-already passed verification.
+Each release includes `catalog.json`, `release-state.json`, and `catalog.tar.gz`
+containing the index and all referenced manifests. SBOMs and build evidence are
+available in workflow artifacts. If publication fails after the tag/catalog push,
+rerun that source workflow: it resumes the release without rewriting published
+revisions or rebuilding unchanged images.
 
-Do not hand-edit generated catalogs or historical manifests. Edit
-`images/<game>/template.json`; a content change (including metadata with the same
-image digest) gets a distinct deterministic revision UUID. The index contains one
-current revision per supported template. Historical files remain available, and
-existing servers retain their pinned revision.
+Do not edit generated catalogs or historical manifests by hand. Edit a runtime's
+`template.json`; changed content receives a distinct revision identifier. The
+catalog retains published history for image-version selection. Existing servers
+keep their selected image until explicitly upgraded.
 
 ## Catalog consumers
 
-The public sync URL stays compatible with existing installations:
+Configure Squab Core to import this public index periodically:
 
 ```text
 https://raw.githubusercontent.com/squab-dev/squab-templates/main/catalog.json
 ```
 
-For a fixed release, replace `main` with its tag. Use raw repository URLs for Core;
-GitHub Release asset downloads redirect and are not compatible with Core's strict
-catalog fetcher. Extract `catalog.tar.gz` to serve the same relative layout from
-another approved HTTPS origin.
+Replace `main` with a release tag to pin the catalog. Use raw repository URLs for
+Core; release-asset downloads redirect and are incompatible with its strict
+fetcher. To use another approved HTTPS origin, extract `catalog.tar.gz` and keep
+its relative directory layout.
 
-Core periodically imports the index when catalog sync is enabled in the Squab
-Helm configuration (`catalog.enabled: true` with the operator Secret configured;
-the default schedule is every five minutes). No GitHub token is needed for the public catalog. Core keeps
-its existing entries on fetch failures and rejects changed content for an
-existing revision. A new release does not upgrade running servers automatically.
+Enable catalog sync in the Squab Helm configuration. Public catalogs need no
+GitHub token. Core retains existing entries if a fetch fails and rejects changed
+content for an existing revision. Compatible runtimes and image versions are
+discovered without editing Core or restarting it; new runtime capabilities can
+require updated platform services. The vendored contract records the supported
+specification version.
 
-This repository uses the template contract from specification **0.3.16**.
-Core 0.9.1 removed the old Paper build allowlist. New compatible templates and image versions become
-available through catalog sync without another Core release or restart. The
-catalog owns image digests, artifact pins and license document versions; Core and
-Wing enforce the supported runtime contract and verify integrity. New runtime
-capabilities may still require service support. **Palworld requires Core and Wing
-with protocol 1.5 / `game.container-health.v1` before publishing its catalog
-entry**; Core 0.9.1 alone does not provide that runtime capability. The Paper launcher-only image
-and Wing artifact verification continue to require explicit Minecraft EULA
-acceptance. Hytale uses owner browser sign-in and downloads its files into each server’s private data directory; the image and catalog contain no account credentials.
+Catalog metadata supplies image digests, artwork, resource requirements and any
+license or artifact declarations. Container-image upgrades and game updates are
+separate: supported runtimes may update game files at startup, while the selected
+container image stays pinned. Check the runtime's own README for its policy and
+limitations. Account credentials belong in private per-server data, never in
+images or catalog metadata.
 
 ## Adding a runtime
 
-Add a directory under `images/` with its own apko configuration, reviewed lock,
-melange launcher package, smoke checks and README. Extend the supported game
-choices in the build/lock tools and Makefile smoke target. The workflow discovers
-image directories from their `apko.yaml` files. Add `template.json` only when Core
-and Wing implement the required runtime, license and readiness contracts.
+Add a directory under `images/` with its composition, reviewed dependency lock,
+launcher package, smoke checks and usage documentation. Register it in the shared
+build and verification tools where required; the workflow discovers image
+directories through their `apko.yaml` files. Add catalog metadata and artwork only
+when Core and Wing support the required runtime contract.
+
+Keep runtime-specific names, versions and instructions in that directory. Adding
+or updating a runtime should not require changing this README.
 
 ## Verification
 
-Release planner regression tests cover independent/shared image changes,
-metadata-only revisions, digest reuse, failed-run carry-over, immutable history,
-self-contained catalog archives and retrying GitHub Release publication. Run
-`make check` and `actionlint` after changing the workflow or release tools.
-
-Local verification on 2026-10-05: all 25 unit/regression tests and shell syntax
-checks passed; actionlint passed; both Paper and Hytale built with apko 1.4.6 /
-melange 0.61.2 and passed Docker smoke checks. The official Paper build-129 JAR
-was downloaded and its exact size/checksum verified. Smoke checks exercise the
-launcher contract; a real authenticated Minecraft client session was not run.
-The PR workflow separately performs the required image vulnerability scans.
-
-## Choosing and updating versions
-
-The release catalog includes immutable historical manifests (up to 100 entries),
-so Squab can offer a specific published image version when creating a server.
-Catalog releases also provide game artwork from `artwork/`; metadata and artwork
-changes reuse existing images. Runtime changes still rebuild only affected games.
-The Panel supports catalog search and a confirmed upgrade to the latest image.
-Existing servers keep their pinned image until the owner upgrades it.
-
-In the new runtime images, Paper checks for the latest stable build of its selected
-Minecraft version on each start/restart. Hytale checks the official release
-channel with the owner's private per-server login. Palworld remains image-updated;
-see its README for the SteamCMD runtime limitation. Older image versions retain
-their original update behavior.
+Run `make check` for regression and syntax checks, plus the affected runtime's
+build and smoke checks. Run `actionlint` after workflow changes. Release tooling
+tests cover selective builds, digest reuse, immutable history, failed-run recovery
+and self-contained catalog archives. Release-specific validation and limitations
+belong in [`implementation/`](implementation/) and the release/PR notes.
