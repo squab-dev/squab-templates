@@ -22,8 +22,9 @@ The selected artifact is `paper-26.2-129.jar`, published
 `b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083`.
 The official metadata is available from the
 [Paper downloads service](https://fill.papermc.io/v3/projects/paper/versions/26.2/builds/129).
-Keep the launcher and template pins in sync when changing builds, and ensure
-Core accepts the selected complete artifact tuple before publishing it.
+Keep the launcher and template pins in sync and verify the upstream artifact
+when changing builds. Core 0.9.1 reads these pins from the catalog; future Paper
+builds do not need a Core code change or release.
 
 Historical build-123 manifests and images remain immutable. Existing servers
 continue using their selected revision; publishing build 129 does not replace

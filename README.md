@@ -119,13 +119,18 @@ catalog fetcher. Extract `catalog.tar.gz` to serve the same relative layout from
 another approved HTTPS origin.
 
 Core periodically imports the index when catalog sync is enabled in the Squab
-Helm configuration. No GitHub token is needed for the public catalog. Core keeps
+Helm configuration (`catalog.enabled: true` with the operator Secret configured;
+the default schedule is every five minutes). No GitHub token is needed for the public catalog. Core keeps
 its existing entries on fetch failures and rejects changed content for an
 existing revision. A new release does not upgrade running servers automatically.
 
 This repository uses the template contract from specification **0.3.15**.
-**Deploy the Core build-129 validator update before merging this automation/Paper
-update**: older Core versions only accept Paper build 123. The launcher-only image
+**Deploy Core 0.9.1 once before enabling this update** to remove its old Paper
+build allowlist. After that, new compatible templates and image versions become
+available through catalog sync without another Core release or restart. The
+catalog owns image digests, artifact pins and license document versions; Core and
+Wing enforce the supported runtime contract and verify integrity. New runtime
+capabilities may still require service support. The launcher-only image
 and Wing artifact verification continue to require explicit Minecraft EULA
 acceptance. Hytale is not added to the catalog by this change.
 
