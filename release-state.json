@@ -1,19 +1,25 @@
 {
-  "version": "v0.2.1",
-  "source": "f4a1cf3d7e9599720d59fbfa640a7ac62fc760b3",
-  "release_tools": "fd08ddef7570a8a207fe14b2d3178b5548eb23fe53df42721ed002ba7613e940",
+  "version": "v0.2.2",
+  "source": "eed3b4e184ac92233a5de032791d37c827e821d0",
+  "release_tools": "88d5ca535403ed24b37c5807b6a2fe6ee7c9961ccd1f8d6aabe3edb14ce07350",
   "images": {
     "hytale": {
-      "build": "e53fdef94b01a601aa4c9acbeee5002126dd47eca5dfc1c492926e1f0748259d",
+      "build": "9faf4bde6550b4d0a4e80aee5ece0a570b46383b544476d6799caed1369d22db",
       "template": null,
-      "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:be769dc597f4529a1b4dbb8619d21b8e75927289cb20b97ebaff0222789f4028",
+      "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:5dea87e5f46e32b8ad13e91ed05d9f94c04ae69624084a7c4993652c56049747",
       "manifest": null
     },
+    "palworld": {
+      "build": "e254bbedaced3d168845467011cf00b3fc4b0678fdb55bda67791ecd9482478e",
+      "template": "d5b00b8decbfb37713cc6011297fb9ade62cf18116ade83bc65f74dae8de3bd2",
+      "image": "ghcr.io/squab-dev/squab-templates/palworld@sha256:04d7e1d2c0913a133dc73d3f62dd27b72516afa4132805248aa6ac31b56c8a56",
+      "manifest": "releases/palworld/0.2.2.json"
+    },
     "paper": {
-      "build": "df378a49191a2ee79be305b636fdca40fb8d2b44cace892951122c38f15b57a7",
+      "build": "010ed8127d110f68e1c4860c0e21d69c918a2162f12e41f49dc2bea95c003461",
       "template": "22f737a990736b83b5e9b94a948153b34fead33d79ea753781c39a398a81ecfd",
-      "image": "ghcr.io/squab-dev/squab-templates/paper@sha256:71576f63c49eb3fb0d70a7e413f6c047e26ff509b0293d0ab7d161ac11e6f7b2",
-      "manifest": "releases/paper/0.2.1.json"
+      "image": "ghcr.io/squab-dev/squab-templates/paper@sha256:7e1bab0feb33658374bba802c38e4034b19fbeccf06e555cd46f18d91d184be7",
+      "manifest": "releases/paper/0.2.2.json"
     }
   }
 }
