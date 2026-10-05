@@ -10,5 +10,5 @@ fetch() {
     tar -xzf ".tools/$archive" -C .tools
     cp ".tools/${name}_${version}_linux_amd64/$name" ".tools/bin/$name"
 }
-fetch apko 1.4.1 d72352a2a875440946c05877a2e20eb4ffe6ab785cea8e5dbea942f1d62fd42e
-fetch melange 0.60.0 90396912ef4a1b7243ba8765080d408754497e5c14e14132c32461fdcd54e606
+fetch apko 1.4.6 bbe51cce228b70aef68f436da4fc11b5d235b06f8fc1d4c35b39116b86895271
+fetch melange 0.61.2 9a78ee4bd5bd166b5d358b49249e0e6f25e10efede51cf407262218d8a65d78e

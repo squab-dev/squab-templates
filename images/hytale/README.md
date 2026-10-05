@@ -18,10 +18,11 @@ docker load -i build/hytale/image.tar
 make smoke GAME=hytale
 ```
 
-The independent Hytale workflow publishes verified images on main as
+The shared release workflow builds Hytale when its inputs change and publishes
+verified images on main as
 `ghcr.io/squab-dev/squab-templates/hytale:sha-<commit>` and uploads the immutable
 image reference and SBOM. Production deployments must use that digest reference.
-Paper keeps its own image and catalog publication. No Hytale catalog entry is
+Other runtime images retain their existing digest when unchanged. No Hytale catalog entry is
 emitted: Core/Wing still need multi-file distribution, authentication integration,
 configuration and readiness support for this game.
 

@@ -1,0 +1,66 @@
+name: Templates
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: templates-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      build: ${{ steps.plan.outputs.build }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m pip install -r requirements-dev.txt
+      - run: make check
+      - id: plan
+        run: python3 tools/release.py --output build/plan.json --github-output "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-plan
+          path: build/plan.json
+  images:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/image.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      game: ${{ matrix.game }}
+      publish: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+  release:
+    needs: [plan, images]
+    if: >-
+      always() && !cancelled() && github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' && needs.plan.result == 'success' &&
+      needs.plan.outputs.release == 'true' &&
+      (needs.images.result == 'success' || needs.images.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: build/artifacts
+      - name: Generate catalog, tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/publish-release.py --plan build/artifacts/release-plan/plan.json --artifacts build/artifacts

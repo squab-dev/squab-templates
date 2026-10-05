@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-artifact=/squab-runtime/7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08.jar
-expected_size=64521337
-expected_sha256=7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08
+artifact=/squab-runtime/b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083.jar
+expected_size=64522678
+expected_sha256=b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083
 
 [ "${SQUAB_SYSTEM_LICENSE_ACCEPTED:-}" = true ] || {
     echo "trusted license acceptance is required" >&2
