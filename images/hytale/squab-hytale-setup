@@ -121,7 +121,7 @@ def run_java(arguments, cwd, bootstrap=False):
     temporary = cwd / '.tmp'
     directory(temporary)
     environment = dict(os.environ)
-    environment['HYTALE_DISABLE_UPDATES'] = 'false' if bootstrap else 'true'
+    environment['HYTALE_DISABLE_UPDATES'] = 'false'
     child = subprocess.Popen(['java', f'-Djava.io.tmpdir={temporary}', *arguments], cwd=cwd, env=environment,
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -139,6 +139,11 @@ def run_java(arguments, cwd, bootstrap=False):
             install_requested = True
             print('[Squab] Signed in. Downloading this server’s game files.', flush=True)
             command('update setup')
+        if not bootstrap and plain == '[Squab] UPDATE_READY' and not stopping:
+            staged = cwd.parent / 'updater' / 'staging'
+            record_install(staged, staged / 'squab-install.json', json.loads(PIN.read_text()))
+            if not stopping:
+                command('update apply --confirm')
         if bootstrap and plain.startswith('Multiple profiles available.'):
             print('[Squab] Stop this server, set {"uuid":"your-profile-uuid"} in game/profile.json using Files, then start again.', flush=True)
     result = child.wait()
@@ -177,6 +182,11 @@ def installed_files(game):
     return [game / 'Server' / 'HytaleServer.jar', game / 'Assets.zip']
 
 
+def supported_version(version, pin):
+    return (isinstance(version, str) and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version)
+            and tuple(map(int, version.split('.'))) >= tuple(map(int, pin['version'].split('.'))))
+
+
 def record_install(game, receipt, pin):
     files = installed_files(game)
     for path, maximum in zip(files, [128 * 1024**2, MAX_ASSETS_BYTES]):
@@ -185,16 +195,17 @@ def record_install(game, receipt, pin):
             fail('Hytale game files exceed the supported size')
     version = subprocess.run(['java', '-jar', str(files[0]), '--version'],
                              capture_output=True, text=True, timeout=30, check=True)
-    if version.stdout.strip() != f"HytaleServer v{pin['version']} (release)":
-        fail('Downloaded Hytale version differs from this template. Select an updated template.')
-    atomic_json(receipt, {'version': pin['version'], 'files': [
+    matched = re.fullmatch(r'HytaleServer v([0-9]+\.[0-9]+\.[0-9]+) \(release\)', version.stdout.strip())
+    if not matched or not supported_version(matched[1], pin):
+        fail('Downloaded Hytale server is not a supported release')
+    atomic_json(receipt, {'version': matched[1], 'files': [
         {'path': str(p.relative_to(game)), 'size': p.stat().st_size, 'sha256': digest(p)} for p in files]})
 
 
 def verify_install(game, receipt, pin):
     regular(receipt)
     record = json.loads(receipt.read_text())
-    if not isinstance(record, dict) or record.get('version') != pin['version']:
+    if not isinstance(record, dict) or not supported_version(record.get('version'), pin):
         fail('The installed Hytale version differs from this template')
     entries = record.get('files', [])
     expected = installed_files(game)
@@ -205,6 +216,78 @@ def verify_install(game, receipt, pin):
         if (not isinstance(entry, dict) or entry.get('path') != str(path.relative_to(game)) or
                 path.stat().st_size != entry.get('size') or digest(path) != entry.get('sha256')):
             fail('Installed Hytale files changed; restore the verified files before starting')
+
+
+def prepare_update_config(server):
+    path = server / 'config.json'
+    regular(path)
+    if path.stat().st_size > 1024 * 1024:
+        fail('Hytale configuration is too large')
+    config = json.loads(path.read_text())
+    if not isinstance(config, dict):
+        fail('Invalid Hytale configuration')
+    # The startup plugin owns checking/applying; avoid asynchronous mid-session updates.
+    update = config.get('Update') or {}
+    if not isinstance(update, dict):
+        fail('Invalid Hytale update configuration')
+    config['Update'] = dict(update, Enabled=False, AutoApplyMode='Disabled', Patchline='release')
+    atomic_json(path, config)
+
+
+def apply_staged_update(game, receipt, pin):
+    journal = game / '.squab-update'
+    staged = game / 'updater' / 'staging'
+    if journal.exists() or journal.is_symlink():
+        directory(journal)
+    elif (staged / 'squab-install.json').exists():
+        directory(game / 'updater')
+        directory(staged)
+        directory(staged / 'Server')
+        # A receipt is written only after the official download future succeeds.
+        verify_install(staged, staged / 'squab-install.json', pin)
+        directory(journal)
+        # Copy metadata before moving either binary, so crash recovery can finish.
+        atomic_json(journal / 'receipt.json', json.loads((staged / 'squab-install.json').read_text()))
+    else:
+        return False
+    record_path = journal / 'receipt.json'
+    if not record_path.exists() and not any(journal.iterdir()):
+        journal.rmdir()
+        return apply_staged_update(game, receipt, pin)
+    regular(record_path)
+    record = json.loads(record_path.read_text())
+    if not isinstance(record, dict) or not supported_version(record.get('version'), pin):
+        fail('Invalid Hytale update journal')
+    entries = record.get('files', [])
+    if not isinstance(entries, list) or len(entries) != 2:
+        fail('Invalid Hytale update journal')
+    for index, (target, entry) in enumerate(zip(installed_files(game), entries)):
+        if (not isinstance(entry, dict) or entry.get('path') != str(target.relative_to(game))
+                or not isinstance(entry.get('size'), int) or not isinstance(entry.get('sha256'), str)):
+            fail('Invalid Hytale update journal path')
+        source = staged / entry['path']
+        if source.exists() or source.is_symlink():
+            regular(source)
+            if source.stat().st_size != entry['size'] or digest(source) != entry['sha256']:
+                fail('Staged Hytale update changed')
+            if target.exists() or target.is_symlink():
+                regular(target)
+                backup = journal / f'previous-{index}'
+                if not backup.exists():
+                    target.replace(backup)
+            source.replace(target)
+        regular(target)
+        if target.stat().st_size != entry['size'] or digest(target) != entry['sha256']:
+            fail('Hytale update is incomplete; restart to resume it')
+    atomic_json(receipt, record)
+    # Delete only our two known backup files; never world/configuration paths.
+    for index in range(2):
+        (journal / f'previous-{index}').unlink(missing_ok=True)
+    (staged / 'squab-install.json').unlink(missing_ok=True)
+    record_path.unlink()
+    journal.rmdir()
+    print('[Squab] Applied the verified Hytale update; worlds and account data were retained.', flush=True)
+    return True
 
 
 def healthcheck():
@@ -231,6 +314,7 @@ def main():
     if (game / 'Server').is_symlink():
         fail('Hytale server directory must not be a symlink')
     receipt = game / 'squab-install.json'
+    apply_staged_update(game, receipt, pin)
     if not receipt.exists() and not receipt.is_symlink():
         if not all(p.exists() for p in installed_files(game)):
             bootstrap = game / 'HytaleServer.jar'
@@ -247,15 +331,23 @@ def main():
             if result not in [0, 8]:
                 fail('Hytale setup did not finish. Restart to request a new sign-in link.')
         record_install(game, receipt, pin)
-    verify_install(game, receipt, pin)
-    server = game / 'Server'
-    print('[Squab] Starting your Hytale server. Sign-in belongs only to this server.', flush=True)
-    return run_java([f'-XX:MaxRAMPercentage={heap}', '-jar', str(server / 'HytaleServer.jar'),
-                     '--assets', str(game / 'Assets.zip'), '--bind', f'0.0.0.0:{port}',
-                     '--auth-mode', 'authenticated', '--disable-sentry',
-                     '--mods', str(TOOLS / 'plugins'), *profile,
-                     '--boot-command', 'auth persistence Encrypted',
-                     '--boot-command', 'auth login device'], server)
+    for _attempt in range(2):
+        verify_install(game, receipt, pin)
+        server = game / 'Server'
+        prepare_update_config(server)
+        print('[Squab] Starting your Hytale server. Sign-in belongs only to this server.', flush=True)
+        result = run_java([f'-XX:MaxRAMPercentage={heap}', '-jar', str(server / 'HytaleServer.jar'),
+                         '--assets', str(game / 'Assets.zip'), '--bind', f'0.0.0.0:{port}',
+                         '--auth-mode', 'authenticated', '--disable-sentry',
+                         '--mods', str(TOOLS / 'plugins'), *profile,
+                         '--boot-command', 'auth persistence Encrypted',
+                         '--boot-command', 'auth login device'], server)
+        if result != 8 or stopping:
+            return result
+        if not apply_staged_update(game, receipt, pin):
+            fail('Hytale requested an update but verified staged files were not found')
+    fail('Hytale changed again during startup. Restart to check the new release.')
+
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ package:
   dependencies:
     runtime:
       - busybox
+      - python-3.14
 environment:
   contents:
     keyring:
@@ -18,4 +19,5 @@ environment:
       - busybox
 pipeline:
   - runs: |
+      install -Dm0555 squab-paper-update "${{targets.destdir}}/usr/local/bin/squab-paper-update"
       install -Dm0555 squab-paper-launcher "${{targets.destdir}}/usr/local/bin/squab-paper-launcher"

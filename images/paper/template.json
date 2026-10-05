@@ -2,9 +2,9 @@
   "schema_version": 1,
   "id": "00000000-0000-4000-8000-000000000025",
   "revision_id": "89f6d740-4dbe-42d5-a047-46928af17b35",
-  "name": "Paper 26.2 build 129",
+  "name": "Paper 26.2",
   "game": "minecraft-java-paper",
-  "game_version": "26.2+build.129",
+  "game_version": "26.2",
   "architectures": [
     "amd64"
   ],
@@ -84,7 +84,7 @@
   "readiness": {
     "kind": "minecraft_status",
     "port_name": "game",
-    "timeout_seconds": 300
+    "timeout_seconds": 600
   },
   "stop": {
     "command": "stop",
@@ -110,5 +110,6 @@
     "sha256": "b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083",
     "release_channel": "stable",
     "published_at": "2026-09-23T18:49:01Z"
-  }
+  },
+  "artwork_url": "https://raw.githubusercontent.com/squab-dev/squab-templates/main/artwork/paper.webp"
 }

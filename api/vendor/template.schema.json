@@ -369,6 +369,12 @@
         "published_at"
       ],
       "additionalProperties": false
+    },
+    "artwork_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 1024,
+      "pattern": "^https://[^\\s]+$"
     }
   },
   "required": [

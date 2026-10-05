@@ -107,6 +107,22 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(after['images']['hytale'], before['images']['hytale'])
         self.assertEqual(release.render_manifest(self.root, 'paper', new['image']), new)
 
+    def test_catalog_retains_versions_and_artwork_does_not_rebuild(self):
+        before = release.read_json(self.root / 'catalog.json')['manifests']
+        path = self.root / 'images/paper/template.json'
+        template = release.read_json(path)
+        template['name'] += ' newer'
+        release.write_json(path, template)
+        state, output = self.assemble('v0.2.2')
+        catalog = release.read_json(output / 'catalog.json')['manifests']
+        self.assertTrue(set(before).issubset(catalog))
+        self.assertIn(state['images']['paper']['manifest'], catalog)
+        self.assertEqual(len(catalog), len(before) + 1)
+        self.assertEqual(release.plan(self.root)['build'], [])
+        (self.root/'artwork').mkdir()
+        (self.root/'artwork/paper.webp').write_bytes(b'new artwork')
+        self.assertEqual(release.plan(self.root)['build'], [])
+
     def test_missing_artifact_and_placeholder_digest_fail_closed(self):
         self.edit('images/paper/squab-paper-launcher')
         reference = self.artifacts / 'image-paper/image-reference.txt'

@@ -6,6 +6,7 @@ contents:
   packages:
     - wolfi-baselayout
     - busybox
+    - python-3.14
     - ca-certificates-bundle
     - openjdk-25-jre=25.0.4.1-r1
     - squab-paper-launcher=0.1.0-r1

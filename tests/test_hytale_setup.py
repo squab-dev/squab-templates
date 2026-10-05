@@ -63,7 +63,7 @@ class HytaleSetupTests(unittest.TestCase):
     def test_bootstrap_plugin_and_catalog_select_same_version(self):
         root = ROOT/'images/hytale'
         version = json.loads((root/'bootstrap.json').read_text())['version']
-        self.assertEqual(json.loads((root/'health-manifest.json').read_text())['ServerVersion'], '=' + version)
+        self.assertEqual(json.loads((root/'health-manifest.json').read_text())['ServerVersion'], '>=' + version)
         self.assertEqual(json.loads((root/'template.json').read_text())['game_version'], version)
 
     def test_bootstrap_size_hash_and_redirect_are_checked(self):
@@ -122,14 +122,86 @@ class HytaleSetupTests(unittest.TestCase):
         with self.assertRaises(setup.SetupError):
             setup.verify_install(self.root, receipt, pin)
 
-    def test_different_downloaded_game_version_is_not_accepted(self):
+    def test_newer_release_accepted_but_old_or_prerelease_rejected(self):
         (self.root/'Server').mkdir()
         for p in setup.installed_files(self.root):
             p.write_bytes(b'game')
-        with patch.object(setup.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'HytaleServer v99.0.0 (release)\n', '')):
-            with self.assertRaises(setup.SetupError):
-                setup.record_install(self.root, self.root/'receipt', {'version': '0.6.8'})
-        self.assertFalse((self.root/'receipt').exists())
+        receipt = self.root/'receipt'
+        for version in ['0.6.7 (release)', '0.6.9 (pre-release)']:
+            with patch.object(setup.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'HytaleServer v' + version, '')):
+                with self.assertRaises(setup.SetupError):
+                    setup.record_install(self.root, receipt, {'version': '0.6.8'})
+            self.assertFalse(receipt.exists())
+        with patch.object(setup.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'HytaleServer v0.6.9 (release)', '')):
+            setup.record_install(self.root, receipt, {'version': '0.6.8'})
+        setup.verify_install(self.root, receipt, {'version': '0.6.8'})
+
+    def stage(self):
+        staged = self.root/'updater/staging'
+        (staged/'Server').mkdir(parents=True)
+        for p in setup.installed_files(staged):
+            p.write_bytes(b'new-' + p.name.encode())
+        with patch.object(setup.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'HytaleServer v0.6.9 (release)', '')):
+            setup.record_install(staged, staged/'squab-install.json', {'version': '0.6.8'})
+        return staged
+
+    def test_update_requires_completed_download_and_preserves_world_auth_and_config(self):
+        receipt = self.install()
+        staged = self.stage()
+        complete = (staged/'squab-install.json').read_text()
+        (staged/'squab-install.json').unlink()
+        pin = {'version': '0.6.8'}
+        self.assertFalse(setup.apply_staged_update(self.root, receipt, pin))
+        self.assertEqual((self.root/'Assets.zip').read_bytes(), b'Assets.zip')
+        (staged/'squab-install.json').write_text(complete)
+        private = [self.root/'Server/universe/world', self.root/'Server/auth.enc', self.root/'Server/config.json']
+        for p in private:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b'keep-me')
+        self.assertTrue(setup.apply_staged_update(self.root, receipt, pin))
+        setup.verify_install(self.root, receipt, pin)
+        self.assertEqual(json.loads(receipt.read_text())['version'], '0.6.9')
+        self.assertTrue(all(p.read_bytes() == b'keep-me' for p in private))
+        self.assertFalse(setup.apply_staged_update(self.root, receipt, pin))
+
+    def test_interrupted_update_resumes_after_each_rename_and_cleanup(self):
+        pin = {'version': '0.6.8'}
+        # Exercise interruption before/after moving both files and during cleanup.
+        for stop in range(1, 10):
+            with self.subTest(stop=stop), tempfile.TemporaryDirectory() as temporary:
+                original_root = self.root
+                self.root = Path(temporary)
+                receipt = self.install()
+                self.stage()
+                calls = 0
+                replace, unlink = Path.replace, Path.unlink
+                def interrupt(method):
+                    def wrapped(path, *args, **kwargs):
+                        nonlocal calls
+                        result = method(path, *args, **kwargs)
+                        calls += 1
+                        if calls == stop:
+                            raise OSError('simulated process interruption')
+                        return result
+                    return wrapped
+                with patch.object(Path, 'replace', interrupt(replace)), patch.object(Path, 'unlink', interrupt(unlink)):
+                    try:
+                        setup.apply_staged_update(self.root, receipt, pin)
+                    except OSError:
+                        pass
+                setup.apply_staged_update(self.root, receipt, pin)
+                setup.verify_install(self.root, receipt, pin)
+                self.assertEqual(json.loads(receipt.read_text())['version'], '0.6.9')
+                self.root = original_root
+
+    def test_startup_update_config_retains_game_settings(self):
+        path = self.root/'config.json'
+        path.write_text(json.dumps({'ServerName': 'Keep', 'Update': {'Enabled': True, 'AutoApplyMode': 'WhenEmpty'}}))
+        setup.prepare_update_config(self.root)
+        config = json.loads(path.read_text())
+        self.assertEqual(config['ServerName'], 'Keep')
+        self.assertEqual(config['Update']['AutoApplyMode'], 'Disabled')
+        self.assertFalse(config['Update']['Enabled'])
 
     def test_installer_waits_for_auth_and_requests_download_once(self):
         class Child:
