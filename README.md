@@ -8,7 +8,7 @@ verify and release them. Images run as a non-root user and target **linux/amd64*
 | --- | --- | --- |
 | [Paper](images/paper/README.md) | `ghcr.io/squab-dev/squab-templates/paper` | Minecraft Java 26.2, build 129 |
 | [Palworld](images/palworld/README.md) | `ghcr.io/squab-dev/squab-templates/palworld` | Palworld 1.0.5.102999; requires Wing protocol 1.5 |
-| [Hytale](images/hytale/README.md) | `ghcr.io/squab-dev/squab-templates/hytale` | Runtime image only; authenticated game files are supplied separately |
+| [Hytale](images/hytale/README.md) | `ghcr.io/squab-dev/squab-templates/hytale` | Hytale 0.6.8; each server owner signs in on first start |
 
 ## Repository layout
 
@@ -138,7 +138,7 @@ capabilities may still require service support. **Palworld requires Core and Win
 with protocol 1.5 / `game.container-health.v1` before publishing its catalog
 entry**; Core 0.9.1 alone does not provide that runtime capability. The Paper launcher-only image
 and Wing artifact verification continue to require explicit Minecraft EULA
-acceptance. Hytale is not added to the catalog by this change.
+acceptance. Hytale uses owner browser sign-in and downloads its files into each server’s private data directory; the image and catalog contain no account credentials.
 
 ## Adding a runtime
 
