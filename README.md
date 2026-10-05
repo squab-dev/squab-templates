@@ -17,6 +17,7 @@ images/<game>/
   apko.yaml                   # image composition and non-root identity
   wolfi.lock.json              # reviewed remote APK versions/checksums
   melange.yaml                # launcher package build
+  runtime.Dockerfile          # optional pinned upstream game payload composition
   squab-<game>-launcher        # runtime entrypoint
   template.json               # optional Core metadata, without an image digest
   README.md                   # game-specific usage and constraints
@@ -43,6 +44,9 @@ docker load -i build/paper/image.tar
 make smoke GAME=paper
 # Podman: CONTAINER_ENGINE=podman make smoke GAME=paper
 ```
+
+For Palworld, use `make build smoke GAME=palworld`. Its composed image is loaded
+directly into Docker instead of retaining a second multi-gigabyte archive.
 
 `make tools` installs the same checksum-verified build tools under `.tools/bin`
 for CI or environments without mise; add that directory to `PATH` before building.
@@ -77,7 +81,7 @@ changes run checks without a new release when no earlier changes are pending.
 
 The workflow compares input fingerprints against `release-state.json`, so failed
 or superseded runs leave changes pending. The first automated release establishes
-that state and builds both existing images. Later releases carry forward unchanged
+that state and builds all configured images. Later releases carry forward unchanged
 image digests. Each built image must pass smoke checks and the HIGH/CRITICAL
 fixed-vulnerability scan before it can enter a release. Verified images are pushed
 to `ghcr.io/squab-dev/squab-templates/<game>:sha-<source-commit>`; catalog manifests
@@ -126,12 +130,13 @@ its existing entries on fetch failures and rejects changed content for an
 existing revision. A new release does not upgrade running servers automatically.
 
 This repository uses the template contract from specification **0.3.16**.
-**Deploy Core 0.9.1 once before enabling this update** to remove its old Paper
-build allowlist. After that, new compatible templates and image versions become
+Core 0.9.1 removed the old Paper build allowlist. New compatible templates and image versions become
 available through catalog sync without another Core release or restart. The
 catalog owns image digests, artifact pins and license document versions; Core and
 Wing enforce the supported runtime contract and verify integrity. New runtime
-capabilities may still require service support. The launcher-only image
+capabilities may still require service support. **Palworld requires Core and Wing
+with protocol 1.5 / `game.container-health.v1` before publishing its catalog
+entry**; Core 0.9.1 alone does not provide that runtime capability. The Paper launcher-only image
 and Wing artifact verification continue to require explicit Minecraft EULA
 acceptance. Hytale is not added to the catalog by this change.
 
