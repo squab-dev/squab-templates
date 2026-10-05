@@ -69,3 +69,10 @@ selecting a new image digest; older game versions may not read upgraded worlds.
 Local testing proves server boot, API readiness, persistence and graceful stop.
 A real player joining through a deployed Squab UDP gateway remains a separate
 operator acceptance check.
+
+## Updating
+
+This Wolfi image contains a pinned official Palworld payload. SteamCMD requires
+32-bit libraries unavailable in this runtime, so Palworld does not self-update on
+restart in this release. Publish a newer game image and use Squab's confirmed
+image-upgrade button; its existing `/data` world and configuration are retained.

@@ -1,0 +1,103 @@
+#!/usr/bin/python3
+"""Resolve only stable Paper builds within the image's selected Minecraft version."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import tempfile
+import time
+import urllib.request
+
+VERSION = '26.2'
+MAX_JAR = 128 * 1024**2
+USER_AGENT = 'Squab-Paper/1 (https://github.com/squab-dev/squab-templates)'
+
+
+class UpdateError(Exception):
+    pass
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch(url):
+    return urllib.request.build_opener(NoRedirect).open(
+        urllib.request.Request(url, headers={'User-Agent': USER_AGENT}), timeout=30)
+
+
+def metadata(builds):
+    if not isinstance(builds, list):
+        raise UpdateError('Invalid Paper build list')
+    stable = [build for build in builds if isinstance(build, dict) and build.get('channel') == 'STABLE'
+              and type(build.get('id')) is int and build['id'] > 0]
+    if not stable:
+        raise UpdateError('No stable Paper build exists for the selected Minecraft version')
+    build = max(stable, key=lambda build: build['id'])
+    download = build.get('downloads', {}).get('server:default', {})
+    sha = download.get('checksums', {}).get('sha256', '')
+    size = download.get('size')
+    name = f'paper-{VERSION}-{build["id"]}.jar'
+    if (not isinstance(sha, str) or not re.fullmatch('[a-f0-9]{64}', sha)
+            or type(size) is not int or not 0 < size <= MAX_JAR
+            or download.get('name') != name
+            or download.get('url') != f'https://fill-data.papermc.io/v1/objects/{sha}/{name}'):
+        raise UpdateError('Invalid official Paper download metadata')
+    return build['id'], download['url'], sha, size
+
+
+def verified(path, sha, size):
+    if path.is_symlink() or not path.is_file() or path.stat().st_size != size:
+        return False
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest() == sha
+
+
+def update(root=Path('/data/.paper-runtime')):
+    if root.is_symlink():
+        raise UpdateError('Paper runtime directory must not be a symlink')
+    root.mkdir(mode=0o700, exist_ok=True)
+    with fetch(f'https://fill.papermc.io/v3/projects/paper/versions/{VERSION}/builds') as response:
+        raw = response.read(1024 * 1024 + 1)
+    if len(raw) > 1024 * 1024:
+        raise UpdateError('Paper build list is too large')
+    build, url, sha, size = metadata(json.loads(raw))
+    target = root / f'{sha}.jar'
+    if not verified(target, sha, size):
+        fd, name = tempfile.mkstemp(prefix='.download-', dir=root)
+        temporary = Path(name)
+        try:
+            deadline = time.monotonic() + 180
+            with os.fdopen(fd, 'wb') as stream, fetch(url) as response:
+                total = 0
+                while chunk := response.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > size or time.monotonic() > deadline:
+                        raise UpdateError('Paper download exceeded its size or time limit')
+                    stream.write(chunk)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if not verified(temporary, sha, size):
+                raise UpdateError('Paper checksum verification failed')
+            temporary.replace(target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    # Only discard old verified-cache names after a successful atomic download.
+    for old in root.iterdir():
+        if old != target and re.fullmatch(r'[a-f0-9]{64}\.jar', old.name):
+            old.unlink()
+    print(f'[Squab] Paper {VERSION} build {build} verified and ready.', file=sys.stderr)
+    return target
+
+
+if __name__ == '__main__':
+    try:
+        if os.environ.get('SQUAB_SYSTEM_LICENSE_ACCEPTED') != 'true':
+            raise UpdateError('Trusted license acceptance is required before checking updates')
+        print(update())
+    except (UpdateError, OSError, ValueError, KeyError, TypeError):
+        print('[Squab] Paper update check/download failed. Installed files are preserved; restart to retry.', file=sys.stderr)
+        sys.exit(65)

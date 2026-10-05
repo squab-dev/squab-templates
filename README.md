@@ -161,3 +161,18 @@ melange 0.61.2 and passed Docker smoke checks. The official Paper build-129 JAR
 was downloaded and its exact size/checksum verified. Smoke checks exercise the
 launcher contract; a real authenticated Minecraft client session was not run.
 The PR workflow separately performs the required image vulnerability scans.
+
+## Choosing and updating versions
+
+The release catalog includes immutable historical manifests (up to 100 entries),
+so Squab can offer a specific published image version when creating a server.
+Catalog releases also provide game artwork from `artwork/`; metadata and artwork
+changes reuse existing images. Runtime changes still rebuild only affected games.
+The Panel supports catalog search and a confirmed upgrade to the latest image.
+Existing servers keep their pinned image until the owner upgrades it.
+
+In the new runtime images, Paper checks for the latest stable build of its selected
+Minecraft version on each start/restart. Hytale checks the official release
+channel with the owner's private per-server login. Palworld remains image-updated;
+see its README for the SteamCMD runtime limitation. Older image versions retain
+their original update behavior.

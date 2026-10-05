@@ -54,4 +54,5 @@ printf 'online-mode=true\n' >>"$properties"
 mv -f "$properties" /data/server.properties
 printf 'eula=true\n' >/data/eula.txt
 
+artifact=$(/usr/local/bin/squab-paper-update)
 exec java -XX:MaxRAMPercentage=75.0 -jar "$artifact" nogui

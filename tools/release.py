@@ -153,6 +153,8 @@ def assemble(root, planned, artifacts, version, source, output):
             entry['manifest'] = path
             manifests.append(path)
         state['images'][game] = entry
+    history = {str(path.relative_to(root)) for path in (root / 'releases').glob('*/*.json')}
+    manifests = sorted(history | set(manifests), key=lambda path: (tuple(int(part) for part in Path(path).stem.split('.')), path))
     if not 1 <= len(manifests) <= 100:
         raise ValueError('catalog must contain between 1 and 100 templates')
     write_json(output / 'catalog.json', {'schema_version': 1, 'manifests': manifests})

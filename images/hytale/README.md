@@ -84,3 +84,15 @@ for completed checks and outstanding acceptance.
 
 Sources: [official server manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual),
 [provider authentication guide](https://support.hytale.com/hc/en-us/articles/45328341414043-Server-Provider-Authentication-Guide).
+
+## Updates on restart
+
+Every startup checks Hytale's official release channel using this server owner's
+saved sign-in. The readiness plugin stages and verifies a new release, asks the
+native server to shut down for update, then the wrapper replaces only the JAR and
+assets using a recoverable journal. Worlds, configuration, mods and encrypted
+authentication stay in the private data volume. Background automatic application
+is disabled; updates happen during startup. Failed checks remain visibly unhealthy
+and can be retried by restarting. No account material is included in the image.
+The public bootstrap and plugin SDK remain pinned at 0.6.8; compatible newer stable
+game releases are supported. Plugin incompatibility prevents readiness.
