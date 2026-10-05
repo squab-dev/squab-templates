@@ -1,7 +1,7 @@
 package:
   name: squab-paper-launcher
   version: 0.1.0
-  epoch: 0
+  epoch: 1
   description: Squab launcher for the Wing-verified Paper runtime
   copyright:
     - license: LicenseRef-Proprietary

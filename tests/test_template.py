@@ -6,6 +6,13 @@ import jsonschema
 from pathlib import Path
 
 class TemplateTests(unittest.TestCase):
+    def test_launcher_and_catalog_pin_the_same_runtime_artifact(self):
+        artifact = json.loads(Path('images/paper/template.json').read_text())['runtime_artifact']
+        launcher = Path('images/paper/squab-paper-launcher').read_text().splitlines()
+        self.assertIn('artifact=/squab-runtime/' + artifact['sha256'] + '.jar', launcher)
+        self.assertIn('expected_sha256=' + artifact['sha256'], launcher)
+        self.assertIn('expected_size=' + str(artifact['size_bytes']), launcher)
+
     def test_manifest_requires_real_digest_and_changes_revision(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'manifest.json'

@@ -8,7 +8,7 @@ contents:
     - busybox
     - ca-certificates-bundle
     - openjdk-25-jre=25.0.4.1-r1
-    - squab-paper-launcher=0.1.0-r0
+    - squab-paper-launcher=0.1.0-r1
 accounts:
   groups:
     - groupname: squab
