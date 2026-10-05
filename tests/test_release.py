@@ -30,10 +30,12 @@ class ReleaseTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'repo'
         self.root.mkdir()
-        for name in ('images', 'tools', '.github', 'api', 'releases'):
+        # Build an isolated release history. Copying the live catalog makes this
+        # fixture collide with v0.2.1 as soon as the real workflow publishes it.
+        for name in ('images', 'tools', '.github', 'api'):
             shutil.copytree(ROOT / name, self.root / name,
                             ignore=shutil.ignore_patterns('__pycache__', '.env', 'data', 'runtime'))
-        for name in ('catalog.json', '.gitignore', 'README.md', 'Makefile', 'requirements-dev.txt'):
+        for name in ('.gitignore', 'README.md', 'Makefile', 'requirements-dev.txt'):
             shutil.copyfile(ROOT / name, self.root / name)
         subprocess.run(['git', 'init', '-q', str(self.root)], check=True)
         self.artifacts = Path(self.temp.name) / 'artifacts'
