@@ -14,9 +14,14 @@ provider account or account token is required in CI, the image or the catalog.
 
 The launcher fetches the public bootstrap JAR pinned by URL, byte count and
 SHA-256 in `bootstrap.json`. Hytale's own installer handles authenticated game
-downloads. The launcher rejects any downloaded server version other than 0.6.8,
+downloads. The launcher rejects any downloaded server release older than 0.6.8,
 records hashes for the installed JAR/assets pair, and checks them on later boots.
 Automatic game updates are disabled during normal operation.
+
+The device code is valid for about 10 minutes (the console shows the exact
+expiry). The JVM logs `Failed to get Hardware UUID` inside containers; the
+encrypted credential store then uses the `auth.key` it keeps in `/data/game`,
+so sign-in still survives container recreation.
 
 Setup, game files, worlds and Hytale's encrypted credential store stay in this
 server's persistent `/data/game`. Credentials never become image layers or
@@ -84,6 +89,16 @@ for completed checks and outstanding acceptance.
 
 Sources: [official server manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual),
 [provider authentication guide](https://support.hytale.com/hc/en-us/articles/45328341414043-Server-Provider-Authentication-Guide).
+
+## Snapshots
+
+The template offers stopped backups only. Hytale 0.6.8 has `world save --all`
+(logs `Finished saving all worlds`) and a per-world chunk-saving toggle, but no
+command that pauses every writer for the whole universe: player, entity and
+world-resource saves keep running, so a copy taken while the server runs is not
+guaranteed to be consistent. Its native `backup` command needs `--backup-dir`
+and writes its own archive, which does not fit Wing's copy-then-resume model.
+Adding `live_snapshot` needs an owner-authorized world to prove a restore.
 
 ## Updates on restart
 
