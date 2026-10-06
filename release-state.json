@@ -1,28 +1,35 @@
 {
-  "version": "v0.2.6",
-  "source": "e581ef17f453537dfb224836dae9a28f288a5526",
-  "release_tools": "f567426558efedbf9e23776d7f381d1d609acd8cc393df3179f3c0faf5be149e",
+  "version": "v0.2.7",
+  "source": "58a9e002c272561e8179ae1a39ec94d6052e9bf0",
+  "release_tools": "dd88ca98aa6e4d9a0c126558176a3cfa655d859bf8705b07977050479aff6817",
   "images": {
+    "curseforge": {
+      "build": "ecf6a60bdea22e65973ed227ed1c9f847b2270d005c57d95cde5ff4d3b6afdbc",
+      "template": "2e0312057392f4908421611d2c81dacc5aed982666b168de50b99afe896c6c95",
+      "image": "ghcr.io/squab-dev/squab-templates/curseforge:0.2.7",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/curseforge@sha256:fde023a3e24dcb5fa0e8c83f764ecef4f4b8e09cd85f95e6e62e349b99fe4b15",
+      "manifest": "releases/curseforge/0.2.7.json"
+    },
     "hytale": {
-      "build": "0121ee9caa2fb2965ea85475891541a24371c2dc333dc0eb2316a287202adcc4",
+      "build": "3c0ab2a883366199c2e6615a5eebbea872ee6b7548599c8d6eed497866b1f128",
       "template": "adfd379042037f5252e6b67b7978b9fee0e5cf66f0fda4976a212b8c1360ce01",
-      "image": "ghcr.io/squab-dev/squab-templates/hytale:0.2.4",
-      "verified_image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:927e6ddcf24dfb7df2ab0ea559a9821ade17f84a7eb3ae6bf7f25fbdeaaec23d",
-      "manifest": "releases/hytale/0.2.4.json"
+      "image": "ghcr.io/squab-dev/squab-templates/hytale:0.2.7",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:7be117573486794a9dbe560df8821cf8b7d5c2c264e07ba1a548cc001099846c",
+      "manifest": "releases/hytale/0.2.7.json"
     },
     "palworld": {
-      "build": "e254bbedaced3d168845467011cf00b3fc4b0678fdb55bda67791ecd9482478e",
+      "build": "9694d50bd2c4ac2e81724ab8c0313aa67e9fc4dd0ffb9930ee31ec73d78b390b",
       "template": "bae9a43638b884b9913fa909565331a31288d0857d251bc98658797f859964c5",
-      "image": "ghcr.io/squab-dev/squab-templates/palworld:0.2.4",
-      "verified_image": "ghcr.io/squab-dev/squab-templates/palworld@sha256:04d7e1d2c0913a133dc73d3f62dd27b72516afa4132805248aa6ac31b56c8a56",
-      "manifest": "releases/palworld/0.2.6.json"
+      "image": "ghcr.io/squab-dev/squab-templates/palworld:0.2.7",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/palworld@sha256:26b92fed54483a77351cca4cf41361d6581c469c560fe8ac21fca0b7b9f7c077",
+      "manifest": "releases/palworld/0.2.7.json"
     },
     "paper": {
-      "build": "b8950e96c7956e86265ed37fa743e942e477a4d06601d72989d5259c7e2028be",
+      "build": "4d53350b4a01705183e30fb787b1a15035a55f9ce6a582ecd55a442215981de6",
       "template": "78777409a8168575f1220fed64a35ca32e2551ee6b149dacc6eeec8a525c07d5",
-      "image": "ghcr.io/squab-dev/squab-templates/paper:0.2.4",
-      "verified_image": "ghcr.io/squab-dev/squab-templates/paper@sha256:ab6314d63a30cdcc77e57e904ba77536c46ccb162f67e63807726349ba126f88",
-      "manifest": "releases/paper/0.2.5.json"
+      "image": "ghcr.io/squab-dev/squab-templates/paper:0.2.7",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/paper@sha256:a7a4cf1a1412b4f6b8dbe7093e82b29fac90c713d9b45c24413058490be6e203",
+      "manifest": "releases/paper/0.2.7.json"
     }
   }
 }

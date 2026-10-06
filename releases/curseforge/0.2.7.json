@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "id": "e943d5bb-134d-4b6b-8d1f-38c19f9831ed",
+  "name": "CurseForge Modpack (Minecraft Java)",
+  "game": "minecraft-java-curseforge",
+  "game_version": "Modpack server pack",
+  "architectures": [
+    "amd64"
+  ],
+  "run_as": {
+    "uid": 65532,
+    "gid": 65532
+  },
+  "argv": [
+    "/usr/local/bin/squab-curseforge-launcher"
+  ],
+  "minimum_limits": {
+    "memory_mib": 6144,
+    "disk_mib": 20480,
+    "cpu_millicores": 2000
+  },
+  "ports": [
+    {
+      "name": "game",
+      "protocol": "tcp",
+      "container_port": 25565
+    }
+  ],
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "CF_API_KEY": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096,
+        "sensitive": true
+      },
+      "CF_MODPACK": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "sensitive": false,
+        "create_only": true
+      },
+      "CF_FILE_ID": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2147483647,
+        "sensitive": false
+      },
+      "JAVA_VERSION": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "8",
+          "17",
+          "21",
+          "25"
+        ],
+        "default": "auto",
+        "sensitive": false
+      },
+      "MAX_PLAYERS": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "sensitive": false
+      },
+      "DIFFICULTY": {
+        "type": "string",
+        "enum": [
+          "peaceful",
+          "easy",
+          "normal",
+          "hard"
+        ],
+        "sensitive": false
+      },
+      "GAME_MODE": {
+        "type": "string",
+        "enum": [
+          "survival",
+          "creative",
+          "adventure",
+          "spectator"
+        ],
+        "sensitive": false
+      },
+      "WHITELIST_ENABLED": {
+        "type": "boolean",
+        "default": false,
+        "sensitive": false
+      },
+      "MOTD": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 120,
+        "sensitive": false
+      }
+    },
+    "required": [
+      "CF_API_KEY",
+      "CF_MODPACK"
+    ],
+    "additionalProperties": false
+  },
+  "readiness": {
+    "kind": "minecraft_status",
+    "port_name": "game",
+    "timeout_seconds": 900
+  },
+  "stop": {
+    "command": "stop",
+    "timeout_seconds": 180
+  },
+  "data_mount": "/data",
+  "capabilities": [
+    "console",
+    "files",
+    "stopped_backup",
+    "configuration",
+    "live_snapshot"
+  ],
+  "snapshot": {
+    "prepare": [
+      {
+        "command": "save-off"
+      },
+      {
+        "command": "save-all flush",
+        "await": "Saved the",
+        "timeout_seconds": 180
+      }
+    ],
+    "resume": [
+      {
+        "command": "save-on"
+      }
+    ],
+    "exclude": [
+      "logs",
+      "crash-reports",
+      ".squab-curseforge/cache",
+      ".squab-curseforge/tmp",
+      ".squab-curseforge/staging"
+    ]
+  },
+  "test_only": false,
+  "license": {
+    "acceptance_required": true,
+    "document_url": "https://www.minecraft.net/en-us/eula",
+    "document_version": "minecraft-eula-live-2026-09-12"
+  },
+  "artwork_url": "https://raw.githubusercontent.com/squab-dev/squab-templates/main/artwork/curseforge.webp",
+  "image": "ghcr.io/squab-dev/squab-templates/curseforge:0.2.7",
+  "revision_id": "347c9978-5614-5d13-b8f5-98af3a2f1679"
+}
