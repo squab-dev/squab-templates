@@ -46,6 +46,10 @@ save/shutdown endpoints and waits for the actual game process to exit. Docker
 SIGTERM/SIGINT request the same shutdown. Wing's timeout remains responsible
 for forced termination. Backups must be made while stopped.
 
+There are no live snapshots. Palworld has no way to pause autosave, and its
+REST `save` returns before the save is known to be on disk (about 0.1 seconds
+on an empty world), so nothing can be awaited before copying `/data`.
+
 ## Local Compose
 
 Set `PALWORLD_IMAGE` to the published digest reference, then:

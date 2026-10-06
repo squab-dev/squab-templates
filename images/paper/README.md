@@ -30,4 +30,20 @@ Historical build-123 manifests and images remain immutable. Existing servers
 continue using their selected revision; publishing build 129 does not replace
 their binary or world files.
 
+## Live snapshots
+
+The template declares `live_snapshot`. Wing sends `save-off`, then
+`save-all flush` and waits for `Saved the game`, copies `/data` without `logs`,
+`crash-reports` and `cache`, then sends `save-on`. Players stay connected.
+
+## Real boot check
+
+`python3 tools/boot-paper.py` runs the built image like Wing does (read-only
+root, dropped capabilities, read-only `/squab-runtime` with the pinned JAR),
+waits for a Minecraft status ping, runs the template's exact snapshot commands,
+restores that copy into a fresh volume, boots it and checks that the world seed
+comes from the restored `level.dat`, then stops both servers through the
+console. It needs network access and no Minecraft account, so it does not
+replace an authenticated client join.
+
 The image version selector pins the container release, not a historical Paper build. Startup updates do not change the selected Minecraft version. Historical images keep their original behavior until explicitly upgraded.
