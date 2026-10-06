@@ -20,6 +20,9 @@ publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
 
 
+GAMES = tuple(sorted(path.parent.name for path in (ROOT / 'images').glob('*/apko.yaml')))
+
+
 def image(game, digest='0123456789abcdef' * 4):
     return f'ghcr.io/squab-dev/squab-templates/{game}@sha256:{digest}'
 
@@ -39,7 +42,7 @@ class ReleaseTests(unittest.TestCase):
             shutil.copyfile(ROOT / name, self.root / name)
         subprocess.run(['git', 'init', '-q', str(self.root)], check=True)
         self.artifacts = Path(self.temp.name) / 'artifacts'
-        for game in ('paper', 'hytale', 'palworld'):
+        for game in GAMES:
             target = self.artifacts / f'image-{game}' / 'image-reference.txt'
             target.parent.mkdir(parents=True)
             target.write_text(image(game) + '\n')
@@ -71,7 +74,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertFalse(release.plan(self.root)['release'])
 
     def test_each_game_change_only_rebuilds_its_own_image(self):
-        for game in ('paper', 'hytale', 'palworld'):
+        for game in GAMES:
             with self.subTest(game=game):
                 path = self.root / f'images/{game}/squab-{game}-launcher'
                 original = path.read_bytes()
@@ -81,7 +84,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_shared_build_change_rebuilds_all_images(self):
         self.edit('tools/build.sh')
-        self.assertEqual(release.plan(self.root)['build'], ['hytale', 'palworld', 'paper'])
+        self.assertEqual(release.plan(self.root)['build'], list(GAMES))
 
     def test_publisher_change_releases_without_rebuilding_images(self):
         self.edit('tools/publish-release.py')

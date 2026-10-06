@@ -199,7 +199,45 @@
             "required": [
               "type"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "sensitive"
+                  ],
+                  "properties": {
+                    "sensitive": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "type": {
+                      "const": "string"
+                    },
+                    "create_only": {
+                      "const": false
+                    }
+                  },
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "default"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "enum"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
           },
           "propertyNames": {
             "pattern": "^(?!SQUAB_SYSTEM_).+$"
@@ -233,7 +271,6 @@
         "kind": {
           "type": "string",
           "enum": [
-            "fake_protocol",
             "minecraft_status",
             "container_health"
           ]
@@ -295,7 +332,9 @@
       "maxItems": 5
     },
     "test_only": {
-      "type": "boolean"
+      "type": "boolean",
+      "const": false,
+      "deprecated": true
     },
     "license": {
       "type": "object",
@@ -489,8 +528,7 @@
     "readiness",
     "stop",
     "data_mount",
-    "capabilities",
-    "test_only"
+    "capabilities"
   ],
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",

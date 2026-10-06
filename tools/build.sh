@@ -1,7 +1,9 @@
 #!/bin/sh
 set -eu
 image=${1:-paper}
-case "$image" in paper|hytale|palworld) ;; *) echo 'Unknown image' >&2; exit 64;; esac
+# Any image directory with an apko configuration; names are plain lowercase slugs.
+case "$image" in *[!a-z0-9-]*|-*|'') echo 'Unknown image' >&2; exit 64;; esac
+[ -f "images/$image/apko.yaml" ] || { echo 'Unknown image' >&2; exit 64; }
 APKO=${APKO:-apko}
 MELANGE=${MELANGE:-melange}
 build="build/$image"

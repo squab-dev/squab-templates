@@ -19,5 +19,10 @@ Sources, downloaded 2026-10-06:
 - palworld.webp
   - art: Pocketpair Steam library hero, https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/library_hero_2x.jpg
   - logo: Pocketpair Steam library logo, https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/logo_2x.png
+- curseforge.webp
+  - background: generated in `compose.py`, a gradient in CurseForge's brand orange (no game or modpack imagery)
+  - logo: the white CurseForge logo and wordmark, symbol `cf-logo-and-text` of the official CurseForge blog sprite, https://blog.curseforge.com/assets/img/sprite.svg
+
+CurseForge is a mod platform rather than a game, so its card has no publisher key art. The logo is used unaltered (not recoloured, distorted or combined with other marks) to identify that the template installs modpacks from CurseForge. The card carries no Minecraft logo or imagery; the template name states that it runs Minecraft Java.
 
 `palworld.jpg` is the earlier Steam store header (https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/6912f19c43a95ff5fe514eedd35e68bf12335459/header.jpg, downloaded 2026-10-05). It stays only because published Palworld manifests up to v0.2.5 reference it; new revisions use `palworld.webp`.
