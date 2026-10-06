@@ -1,6 +1,6 @@
 {
-  "version": "v0.2.5",
-  "source": "aa67fdc45606b40699c9dfacf71785de215a6522",
+  "version": "v0.2.6",
+  "source": "e581ef17f453537dfb224836dae9a28f288a5526",
   "release_tools": "f567426558efedbf9e23776d7f381d1d609acd8cc393df3179f3c0faf5be149e",
   "images": {
     "hytale": {
@@ -12,10 +12,10 @@
     },
     "palworld": {
       "build": "e254bbedaced3d168845467011cf00b3fc4b0678fdb55bda67791ecd9482478e",
-      "template": "f06e701f18f9d69a67985127069cab25490e1e7cec056752c246e293ca075d33",
+      "template": "bae9a43638b884b9913fa909565331a31288d0857d251bc98658797f859964c5",
       "image": "ghcr.io/squab-dev/squab-templates/palworld:0.2.4",
       "verified_image": "ghcr.io/squab-dev/squab-templates/palworld@sha256:04d7e1d2c0913a133dc73d3f62dd27b72516afa4132805248aa6ac31b56c8a56",
-      "manifest": "releases/palworld/0.2.4.json"
+      "manifest": "releases/palworld/0.2.6.json"
     },
     "paper": {
       "build": "b8950e96c7956e86265ed37fa743e942e477a4d06601d72989d5259c7e2028be",
