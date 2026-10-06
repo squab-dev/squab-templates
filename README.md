@@ -69,14 +69,20 @@ a new patch tag and GitHub Release automatically.
 | --- | --- | --- |
 | Runtime launcher, composition or dependency lock | Changed runtime only | Yes |
 | Shared build tools or image workflow | All affected runtimes | Yes |
-| Template metadata | None; reuse the published image digest | Yes |
+| Template metadata | None; reuse the published image version | Yes |
 | Catalog/release tooling or contract | None | Yes |
 | Documentation, tests or local Compose examples | None | No |
 
 The release planner compares fingerprints with `release-state.json`. Failed or
 superseded runs leave changes pending; unchanged images retain their published
-digests. Each rebuilt image must pass its smoke checks and the scan for fixable
+version tags. Each rebuilt image must pass its smoke checks and the scan for fixable
 HIGH/CRITICAL vulnerabilities before publication.
+
+The release job promotes verified images to stable `MAJOR.MINOR.PATCH` tags. It
+checks registry contents before reusing a tag and never overwrites a different
+image. Build digests remain verification evidence in `release-state.json`.
+Unchanged images keep their previous version tag. Historical digest-based
+manifests remain available; new tags require Core and Wing protocol 1.7 support.
 
 The release job generates new immutable manifests, `catalog.json` and
 `release-state.json`, commits them to `main`, and atomically pushes an annotated
@@ -114,7 +120,7 @@ discovered without editing Core or restarting it; new runtime capabilities can
 require updated platform services. The vendored contract records the supported
 specification version.
 
-Catalog metadata supplies image digests, artwork, resource requirements and any
+Catalog metadata supplies image version tags, artwork, resource requirements and any
 license or artifact declarations. Container-image upgrades and game updates are
 separate: supported runtimes may update game files at startup, while the selected
 container image stays pinned. Check the runtime's own README for its policy and
