@@ -1,7 +1,7 @@
 {
-  "version": "v0.2.4",
-  "source": "b4916c52232ab3363840a1729d224f7de1350fbc",
-  "release_tools": "233434d127afeefe63d9b8a831f006fb83ae97d5158b6319fb7c59bde5505773",
+  "version": "v0.2.5",
+  "source": "aa67fdc45606b40699c9dfacf71785de215a6522",
+  "release_tools": "f567426558efedbf9e23776d7f381d1d609acd8cc393df3179f3c0faf5be149e",
   "images": {
     "hytale": {
       "build": "0121ee9caa2fb2965ea85475891541a24371c2dc333dc0eb2316a287202adcc4",
@@ -19,10 +19,10 @@
     },
     "paper": {
       "build": "b8950e96c7956e86265ed37fa743e942e477a4d06601d72989d5259c7e2028be",
-      "template": "a2cd7c85f61b5da54fe76ba6da163c2b591f88849e650da27c78c718fa7f6260",
+      "template": "78777409a8168575f1220fed64a35ca32e2551ee6b149dacc6eeec8a525c07d5",
       "image": "ghcr.io/squab-dev/squab-templates/paper:0.2.4",
       "verified_image": "ghcr.io/squab-dev/squab-templates/paper@sha256:ab6314d63a30cdcc77e57e904ba77536c46ccb162f67e63807726349ba126f88",
-      "manifest": "releases/paper/0.2.4.json"
+      "manifest": "releases/paper/0.2.5.json"
     }
   }
 }
