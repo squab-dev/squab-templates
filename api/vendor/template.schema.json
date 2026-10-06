@@ -288,10 +288,11 @@
           "console",
           "files",
           "stopped_backup",
-          "configuration"
+          "configuration",
+          "live_snapshot"
         ]
       },
-      "maxItems": 4
+      "maxItems": 5
     },
     "test_only": {
       "type": "boolean"
@@ -370,6 +371,100 @@
       ],
       "additionalProperties": false
     },
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "prepare": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "await": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "timeout_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 300
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": false,
+            "dependentRequired": {
+              "timeout_seconds": [
+                "await"
+              ]
+            }
+          },
+          "maxItems": 8,
+          "minItems": 1
+        },
+        "resume": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "await": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "timeout_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 300
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": false,
+            "dependentRequired": {
+              "timeout_seconds": [
+                "await"
+              ]
+            }
+          },
+          "maxItems": 8,
+          "minItems": 1
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^(?!/)(?!.*//)(?!.*\\/$)(?!\\.\\.?$)(?!\\.\\.?/)(?!.*\\/\\.\\.?(?:\\/|$))(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f]).+$"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "prepare",
+        "resume",
+        "exclude"
+      ],
+      "additionalProperties": false
+    },
     "artwork_url": {
       "type": "string",
       "format": "uri",
@@ -400,5 +495,33 @@
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://spec.squab.invalid/template.schema.json",
-  "title": "Squab immutable game template v1"
+  "title": "Squab immutable game template v1",
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "capabilities"
+        ],
+        "properties": {
+          "capabilities": {
+            "contains": {
+              "const": "live_snapshot"
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "snapshot"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "snapshot"
+          ]
+        }
+      }
+    }
+  ]
 }

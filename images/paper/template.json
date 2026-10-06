@@ -95,8 +95,31 @@
     "console",
     "files",
     "stopped_backup",
-    "configuration"
+    "configuration",
+    "live_snapshot"
   ],
+  "snapshot": {
+    "prepare": [
+      {
+        "command": "save-off"
+      },
+      {
+        "command": "save-all flush",
+        "await": "Saved the game",
+        "timeout_seconds": 60
+      }
+    ],
+    "resume": [
+      {
+        "command": "save-on"
+      }
+    ],
+    "exclude": [
+      "logs",
+      "crash-reports",
+      "cache"
+    ]
+  },
   "test_only": false,
   "license": {
     "acceptance_required": true,

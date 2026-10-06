@@ -31,6 +31,26 @@ class TemplateTests(unittest.TestCase):
             subprocess.run(command + [image.replace('0123', '1234')], check=True)
             self.assertNotEqual(first['revision_id'], json.loads(output.read_text())['revision_id'])
 
+    def test_live_snapshot_is_declared_only_with_verified_console_commands(self):
+        schema = jsonschema.Draft202012Validator(json.loads(Path('api/vendor/template.schema.json').read_text()))
+        paper = json.loads(Path('images/paper/template.json').read_text())
+        self.assertIn('live_snapshot', paper['capabilities'])
+        self.assertEqual(paper['snapshot'], {
+            'prepare': [{'command': 'save-off'},
+                        {'command': 'save-all flush', 'await': 'Saved the game', 'timeout_seconds': 60}],
+            'resume': [{'command': 'save-on'}],
+            'exclude': ['logs', 'crash-reports', 'cache'],
+        })
+        without_block = {k: v for k, v in paper.items() if k != 'snapshot'}
+        self.assertFalse(schema.is_valid(without_block))
+        without_capability = dict(paper, capabilities=[c for c in paper['capabilities'] if c != 'live_snapshot'])
+        self.assertFalse(schema.is_valid(without_capability))
+        # Other games have no verified console save sequence and keep stopped backups only.
+        for game in ['palworld', 'hytale']:
+            manifest = json.loads(Path(f'images/{game}/template.json').read_text())
+            self.assertNotIn('live_snapshot', manifest['capabilities'])
+            self.assertNotIn('snapshot', manifest)
+
     def test_launcher_rejects_untrusted_input_before_java(self):
         import os
         launcher = ['sh', 'images/paper/squab-paper-launcher']

@@ -213,6 +213,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_failed_release_api_can_recover_from_existing_tag(self):
         for args in (('config', 'user.name', 'Test'), ('config', 'user.email', 'test@example.invalid'),
+                     ('config', 'commit.gpgsign', 'false'), ('config', 'tag.gpgsign', 'false'),
                      ('add', '.'), ('commit', '-qm', 'Release'), ('tag', 'v0.2.1')):
             release.git(self.root, *args)
         self.assertEqual(release.recovery_tag(self.root, self.source), 'v0.2.1')
@@ -246,6 +247,7 @@ class ReleaseTests(unittest.TestCase):
         tests.mkdir()
         shutil.copyfile(ROOT / 'tests/test_catalog.py', tests / 'test_catalog.py')
         for args in (('config', 'user.name', 'Test'), ('config', 'user.email', 'test@example.invalid'),
+                     ('config', 'commit.gpgsign', 'false'), ('config', 'tag.gpgsign', 'false'),
                      ('add', '.'), ('commit', '-qm', 'Baseline'), ('tag', '-a', 'v0.2.1', '-m', 'Baseline')):
             release.git(self.root, *args)
         remote = Path(self.temp.name) / 'remote.git'
