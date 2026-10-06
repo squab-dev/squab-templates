@@ -146,9 +146,9 @@ class ReleaseTests(unittest.TestCase):
         self.edit('images/hytale/squab-hytale-launcher')
         after, output = self.assemble('v0.2.2')
         self.assertEqual(before['images']['paper'], after['images']['paper'])
-        self.assertFalse((output / 'releases').exists())
+        self.assertTrue((output / 'releases/hytale/0.2.2.json').exists())
         self.assertEqual(release.read_json(output / 'catalog.json')['manifests'],
-                         [data['manifest'] for game, data in sorted(before['images'].items()) if data['manifest']])
+                         [data['manifest'] for game, data in sorted(before['images'].items()) if data['manifest']] + ['releases/hytale/0.2.2.json'])
 
     def test_existing_release_path_cannot_be_overwritten(self):
         self.edit('images/paper/squab-paper-launcher')
@@ -170,7 +170,43 @@ class ReleaseTests(unittest.TestCase):
             index = json.load(archive.extractfile('catalog.json'))
             for path in index['manifests']:
                 manifest = json.load(archive.extractfile(path))
-                self.assertEqual(manifest['image'], image(Path(path).parts[1]))
+                self.assertEqual(manifest['image'], f'ghcr.io/squab-dev/squab-templates/{Path(path).parts[1]}:0.2.1')
+
+    def test_release_images_use_tags_and_keep_verified_build_evidence(self):
+        state = release.read_json(self.root / release.STATE)
+        for game, entry in state['images'].items():
+            self.assertEqual(entry['image'], f'ghcr.io/squab-dev/squab-templates/{game}:0.2.1')
+            self.assertEqual(entry['verified_image'], image(game))
+
+    def test_legacy_digest_images_gain_tags_without_rebuilding(self):
+        before = release.read_json(self.root / release.STATE)
+        for entry in before['images'].values():
+            entry['image'] = entry.pop('verified_image')
+        release.write_json(self.root / release.STATE, before)
+        self.edit('tools/publish-release.py')
+        self.assertEqual(release.plan(self.root)['build'], [])
+        after, output = self.assemble('v0.2.2')
+        for game, entry in after['images'].items():
+            self.assertTrue(entry['image'].endswith(':0.2.2'))
+            self.assertEqual(entry['verified_image'], image(game))
+        self.assertTrue((output / 'releases/paper/0.2.2.json').exists())
+
+    def test_promotion_is_idempotent_and_never_overwrites_another_image(self):
+        state = release.read_json(self.root / release.STATE)
+        expected = image('paper').split('@')[1]
+        with patch.object(publisher, 'registry_digest', return_value=expected), patch.object(publisher, 'run') as run:
+            publisher.publish_image_tags(state)
+            run.assert_not_called()
+        with patch.object(publisher, 'registry_digest', return_value='sha256:' + 'a' * 64), patch.object(publisher, 'run') as run:
+            with self.assertRaises(publisher.ImageTagConflict):
+                publisher.publish_image_tags(state)
+            run.assert_not_called()
+        count = len(state['images'])
+        with patch.object(publisher, 'registry_digest', side_effect=[None] * count + [expected] * count), patch.object(publisher, 'run') as run:
+            publisher.publish_image_tags(state)
+            self.assertEqual(run.call_count, count)
+            for call in run.call_args_list:
+                self.assertIn('--prefer-index=false', call.args)
 
     def test_version_uses_highest_stable_tag(self):
         self.assertEqual(release.next_version(['v0.2.9', 'v0.2.10', 'v0.3.0-rc.1']), 'v0.2.11')
@@ -198,8 +234,14 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(execute.call_args.args[0][:3], ('gh', 'release', 'upload'))
 
     def test_publish_and_retry_use_one_atomic_catalog_commit_and_tag(self):
-        # Real git refs and real publisher process, with only the remote GitHub API
-        # replaced. No network, registry credentials or public refs are involved.
+        self.check_atomic_publication()
+
+    def test_orphaned_image_tag_allocates_next_patch_without_overwriting(self):
+        self.check_atomic_publication(orphaned=True)
+
+    def check_atomic_publication(self, orphaned=False):
+        # Real git refs and publisher process with isolated GitHub/registry fakes.
+        # No network, registry credentials or public refs are involved.
         tests = self.root / 'tests'
         tests.mkdir()
         shutil.copyfile(ROOT / 'tests/test_catalog.py', tests / 'test_catalog.py')
@@ -241,9 +283,38 @@ else:
     sys.exit(3)
 ''')
         gh.chmod(0o755)
+        docker = fake / 'docker'
+        docker.write_text('''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+state = Path(os.environ['TEST_REGISTRY_STATE'])
+refs = json.loads(state.read_text()) if state.exists() else {}
+args = sys.argv[1:]
+if args[:3] == ['buildx', 'imagetools', 'inspect']:
+    if args[3] not in refs:
+        print('manifest not found', file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps({'digest': refs[args[3]]}))
+elif args[:3] == ['buildx', 'imagetools', 'create']:
+    tag = args[args.index('--tag') + 1]
+    assert tag not in refs
+    refs[tag] = args[-1].split('@')[1]
+    state.write_text(json.dumps(refs))
+else: sys.exit(3)
+''')
+        docker.chmod(0o755)
         api_state = Path(self.temp.name) / 'gh.json'
+        registry_state = Path(self.temp.name) / 'registry.json'
+        orphaned_tag = 'ghcr.io/squab-dev/squab-templates/paper:0.2.2'
+        orphaned_digest = 'sha256:' + 'b' * 64
+        if orphaned:
+            existing = {entry['image']: entry['verified_image'].split('@')[1]
+                        for entry in release.read_json(self.root / release.STATE)['images'].values()}
+            existing[orphaned_tag] = orphaned_digest
+            release.write_json(registry_state, existing)
         env = dict(os.environ, GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push',
                    GITHUB_SHA=source, TEST_GH_STATE=str(api_state),
+                   TEST_REGISTRY_STATE=str(registry_state),
                    PATH=str(fake) + os.pathsep + str(Path(sys.executable).parent)
                    + os.pathsep + os.environ['PATH'])
         command = [sys.executable, 'tools/publish-release.py', '--plan', str(planned),
@@ -252,7 +323,10 @@ else:
         self.assertNotEqual(first.returncode, 0)
         self.assertTrue(release.read_json(api_state)['isDraft'], first.stderr)
         tag = release.recovery_tag(self.root, source)
-        self.assertEqual(tag, 'v0.2.2')
+        self.assertEqual(tag, 'v0.2.3' if orphaned else 'v0.2.2')
+        if orphaned:
+            self.assertEqual(release.read_json(registry_state)[orphaned_tag], orphaned_digest)
+            self.assertFalse((self.root / 'releases/paper/0.2.2.json').exists())
         commit = release.git(self.root, 'rev-parse', f'{tag}^{{commit}}')
         self.assertEqual(release.git(remote, 'rev-parse', 'main'), commit)
         self.assertEqual(release.read_json(self.root / release.STATE)['source'], source)
@@ -260,6 +334,6 @@ else:
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertFalse(release.read_json(api_state)['isDraft'])
         self.assertEqual(release.git(remote, 'rev-parse', 'main'), commit)
-        self.assertEqual(release.git(remote, 'tag', '--list').splitlines(), ['v0.2.1', 'v0.2.2'])
+        self.assertEqual(release.git(remote, 'tag', '--list').splitlines(), ['v0.2.1', tag])
         archive = self.root / 'build/release-assets/catalog.tar.gz'
         self.assertTrue(archive.exists())

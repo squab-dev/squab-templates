@@ -82,9 +82,9 @@ def validate_image(game, image):
     if not re.fullmatch(r'[a-z][a-z0-9-]*', game):
         raise ValueError('invalid game name')
     if not re.fullmatch(r'ghcr\.io/squab-dev/squab-templates/' + re.escape(game)
-                        + r'@sha256:[0-9a-f]{64}', image):
-        raise ValueError('expected a digest-pinned image in the game package')
-    if len(set(image.rsplit(':', 1)[1])) == 1:
+                        + r'(?:@sha256:[0-9a-f]{64}|:(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))', image):
+        raise ValueError('expected a release-tagged or historical digest image in the game package')
+    if '@sha256:' in image and len(set(image.rsplit(':', 1)[1])) == 1:
         raise ValueError('placeholder digests are not publishable')
 
 
@@ -135,11 +135,20 @@ def assemble(root, planned, artifacts, version, source, output):
     for game, hashes in planned['inputs'].items():
         old = previous.get(game, {})
         if game in planned['build']:
-            image = (artifacts / f'image-{game}' / 'image-reference.txt').read_text().strip()
+            verified = (artifacts / f'image-{game}' / 'image-reference.txt').read_text().strip()
         else:
-            image = old['image']
-        validate_image(game, image)
-        entry = dict(hashes, image=image, manifest=None)
+            verified = old.get('verified_image', old['image'])
+        validate_image(game, verified)
+        if '@sha256:' not in verified:
+            raise ValueError('verified registry digest is required as build evidence')
+        # Unchanged images keep their original release tag. Legacy digest entries
+        # gain a tag without rebuilding or altering historical manifests.
+        image = (f'ghcr.io/squab-dev/squab-templates/{game}:{version[1:]}'
+                 if game in planned['build'] or '@sha256:' in old.get('image', '')
+                 else old['image'])
+        if old.get('image') == image and old.get('verified_image', verified) != verified:
+            raise ValueError('refusing to overwrite an immutable image release')
+        entry = dict(hashes, image=image, verified_image=verified, manifest=None)
         if hashes['template'] is not None:
             manifest = render_manifest(root, game, image)
             old_path = old.get('manifest')

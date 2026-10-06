@@ -1,4 +1,4 @@
-"""Render an immutable catalog revision from an actual registry image digest."""
+"""Render an immutable catalog revision from a published image version tag."""
 import argparse
 from pathlib import Path
 

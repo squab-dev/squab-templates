@@ -9,7 +9,7 @@ import sys
 import tarfile
 from pathlib import Path
 
-from release import STATE, assemble, git, next_version, read_json, recovery_tag
+from release import STATE, assemble, git, next_version, read_json, recovery_tag, validate_image
 
 
 def run(*args):
@@ -60,6 +60,45 @@ def publish_github_release(root, tag):
         '--latest' if latest else '--latest=false')
 
 
+class ImageTagConflict(ValueError):
+    pass
+
+
+def registry_digest(image):
+    result = subprocess.run(['docker', 'buildx', 'imagetools', 'inspect', image,
+                             '--format', '{{json .Manifest}}'],
+                            capture_output=True, text=True)
+    if result.returncode:
+        if any(code in result.stderr.lower() for code in ('not found', 'manifest unknown', '404')):
+            return None
+        raise RuntimeError(f'cannot inspect {image}: {result.stderr.strip()}')
+    digest = json.loads(result.stdout)['digest']
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
+        raise ValueError('registry returned an invalid image digest')
+    return digest
+
+
+def publish_image_tags(state):
+    pending = []
+    for game, entry in state['images'].items():
+        image, verified = entry['image'], entry['verified_image']
+        validate_image(game, image)
+        validate_image(game, verified)
+        expected = verified.split('@', 1)[1]
+        existing = registry_digest(image)
+        if existing is not None and existing != expected:
+            raise ImageTagConflict(f'refusing to overwrite released image {image}')
+        if existing is None:
+            pending.append((image, verified, expected))
+    # Preflight every tag before publishing any. Retag the already verified
+    # registry manifest without rebuilding or changing its format/content.
+    for image, verified, expected in pending:
+        run('docker', 'buildx', 'imagetools', 'create', '--prefer-index=false',
+            '--tag', image, verified)
+        if registry_digest(image) != expected:
+            raise ValueError(f'published image tag does not match build evidence: {image}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan', type=Path, required=True)
@@ -86,7 +125,24 @@ def main():
         return
     tag = next_version(git(root, 'tag', '--list', 'v*').splitlines())
     output = root / 'build/release-tree'
-    assemble(root, planned, args.artifacts, tag, source, output)
+    # A superseded run may have promoted an image tag before its atomic Git
+    # push was rejected. Never replace that tag; allocate the next patch.
+    for attempt in range(100):
+        if output.exists(): shutil.rmtree(output)
+        state = assemble(root, planned, args.artifacts, tag, source, output)
+        try:
+            publish_image_tags(state)
+            break
+        except ImageTagConflict:
+            # A moved tag from a prior completed release is corruption, not a
+            # reason to keep generating new catalog versions.
+            if any(entry['image'].rsplit(':', 1)[1] != tag[1:]
+                   and registry_digest(entry['image']) != entry['verified_image'].split('@', 1)[1]
+                   for entry in state['images'].values()):
+                raise
+            tag = next_version([tag])
+    else:
+        raise ValueError('no unused image release version within 100 patches')
     generated = [path for path in output.rglob('*') if path.is_file()]
     for path in generated:
         target = root / path.relative_to(output)

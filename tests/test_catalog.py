@@ -28,7 +28,7 @@ class PublicCatalogTests(unittest.TestCase):
             self.assertLessEqual(len(raw), 1024 * 1024)
             manifest = json.loads(raw)
             jsonschema.validate(manifest, schema)
-            self.assertRegex(manifest["image"], r"^ghcr\.io/.+@sha256:[a-f0-9]{64}$")
+            self.assertRegex(manifest["image"], r"^ghcr\.io/.+(?:@sha256:[a-f0-9]{64}|:[0-9]+\.[0-9]+\.[0-9]+)$")
             self.assertNotIn(manifest["revision_id"], revision_ids)
             revision_ids.add(manifest["revision_id"])
             self.assertFalse(manifest["test_only"])
