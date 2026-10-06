@@ -18,7 +18,7 @@ images/<runtime>/             # runtime source and usage documentation
   wolfi.lock.json             # reviewed dependency versions and checksums
   melange.yaml                # launcher package build
   runtime.Dockerfile          # optional additional image composition
-  template.json               # catalog metadata without an image digest
+  template.json               # catalog metadata without an image reference
   README.md                   # runtime-specific instructions
 artwork/                      # catalog artwork and source attribution
 tools/                        # shared build, verification and release tooling
@@ -142,6 +142,6 @@ or updating a runtime should not require changing this README.
 
 Run `make check` for regression and syntax checks, plus the affected runtime's
 build and smoke checks. Run `actionlint` after workflow changes. Release tooling
-tests cover selective builds, digest reuse, immutable history, failed-run recovery
+tests cover selective builds, version reuse, digest verification, immutable history, failed-run recovery
 and self-contained catalog archives. Release-specific validation and limitations
 belong in [`implementation/`](implementation/) and the release/PR notes.

@@ -234,8 +234,14 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(execute.call_args.args[0][:3], ('gh', 'release', 'upload'))
 
     def test_publish_and_retry_use_one_atomic_catalog_commit_and_tag(self):
-        # Real git refs and real publisher process, with only the remote GitHub API
-        # replaced. No network, registry credentials or public refs are involved.
+        self.check_atomic_publication()
+
+    def test_orphaned_image_tag_allocates_next_patch_without_overwriting(self):
+        self.check_atomic_publication(orphaned=True)
+
+    def check_atomic_publication(self, orphaned=False):
+        # Real git refs and publisher process with isolated GitHub/registry fakes.
+        # No network, registry credentials or public refs are involved.
         tests = self.root / 'tests'
         tests.mkdir()
         shutil.copyfile(ROOT / 'tests/test_catalog.py', tests / 'test_catalog.py')
@@ -298,9 +304,17 @@ else: sys.exit(3)
 ''')
         docker.chmod(0o755)
         api_state = Path(self.temp.name) / 'gh.json'
+        registry_state = Path(self.temp.name) / 'registry.json'
+        orphaned_tag = 'ghcr.io/squab-dev/squab-templates/paper:0.2.2'
+        orphaned_digest = 'sha256:' + 'b' * 64
+        if orphaned:
+            existing = {entry['image']: entry['verified_image'].split('@')[1]
+                        for entry in release.read_json(self.root / release.STATE)['images'].values()}
+            existing[orphaned_tag] = orphaned_digest
+            release.write_json(registry_state, existing)
         env = dict(os.environ, GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push',
                    GITHUB_SHA=source, TEST_GH_STATE=str(api_state),
-                   TEST_REGISTRY_STATE=str(Path(self.temp.name) / 'registry.json'),
+                   TEST_REGISTRY_STATE=str(registry_state),
                    PATH=str(fake) + os.pathsep + str(Path(sys.executable).parent)
                    + os.pathsep + os.environ['PATH'])
         command = [sys.executable, 'tools/publish-release.py', '--plan', str(planned),
@@ -309,7 +323,10 @@ else: sys.exit(3)
         self.assertNotEqual(first.returncode, 0)
         self.assertTrue(release.read_json(api_state)['isDraft'], first.stderr)
         tag = release.recovery_tag(self.root, source)
-        self.assertEqual(tag, 'v0.2.2')
+        self.assertEqual(tag, 'v0.2.3' if orphaned else 'v0.2.2')
+        if orphaned:
+            self.assertEqual(release.read_json(registry_state)[orphaned_tag], orphaned_digest)
+            self.assertFalse((self.root / 'releases/paper/0.2.2.json').exists())
         commit = release.git(self.root, 'rev-parse', f'{tag}^{{commit}}')
         self.assertEqual(release.git(remote, 'rev-parse', 'main'), commit)
         self.assertEqual(release.read_json(self.root / release.STATE)['source'], source)
@@ -317,6 +334,6 @@ else: sys.exit(3)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertFalse(release.read_json(api_state)['isDraft'])
         self.assertEqual(release.git(remote, 'rev-parse', 'main'), commit)
-        self.assertEqual(release.git(remote, 'tag', '--list').splitlines(), ['v0.2.1', 'v0.2.2'])
+        self.assertEqual(release.git(remote, 'tag', '--list').splitlines(), ['v0.2.1', tag])
         archive = self.root / 'build/release-assets/catalog.tar.gz'
         self.assertTrue(archive.exists())
