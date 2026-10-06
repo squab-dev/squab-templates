@@ -8,6 +8,7 @@ Sources are pinned by SHA-256; a changed upstream file stops the build.
 """
 import hashlib
 import io
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -41,6 +42,17 @@ CARDS = {
                  '058014c76c02f9e0fbde4f2567402d0d05b20908875e0d9a2a3d79a44c0ccb6d'),
         'focus': (0.5, 0.5),
     },
+    # CurseForge is a mod platform, not a game: its official logo on a plain
+    # background in its brand orange, with no Minecraft or modpack imagery.
+    'curseforge': {
+        'art': None,
+        'background': ((241, 100, 54), (32, 18, 14)),
+        # The white logo-and-wordmark symbol from the official CurseForge blog sprite.
+        'logo': ('https://blog.curseforge.com/assets/img/sprite.svg',
+                 '027624bfa452431669a4edf834b3d2973b0f2b4d264df7f489a8349a2d1cdfad'),
+        'symbol': 'cf-logo-and-text',
+        'focus': (0.5, 0.5),
+    },
 }
 
 
@@ -59,6 +71,25 @@ def load(url, data):
         import cairosvg
         data = cairosvg.svg2png(bytestring=data, output_width=LOGO_BOX[1] * 2)
     return Image.open(io.BytesIO(data))
+
+
+def background(colors):
+    """A diagonal two-colour gradient used when a brand has no key art."""
+    start, end = colors
+    side = 2 * SIZE[0]
+    mask = Image.linear_gradient('L').resize((side, side)).rotate(-60)
+    left, top = (side - SIZE[0]) // 2, (side - SIZE[1]) // 2
+    mask = mask.crop((left, top, left + SIZE[0], top + SIZE[1]))
+    return Image.composite(Image.new('RGB', SIZE, end), Image.new('RGB', SIZE, start), mask)
+
+
+def symbol(data, name):
+    """Turn one <symbol> of an SVG sprite into a standalone SVG document."""
+    match = re.search(rb'<symbol[^>]*id="' + name.encode() + rb'"[^>]*viewBox="([^"]+)"[^>]*>(.*?)</symbol>', data, re.S)
+    if not match:
+        sys.exit(f'symbol {name} not found')
+    return (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + match.group(1) + b'">'
+            + match.group(2) + b'</svg>')
 
 
 def cover(image, focus):
@@ -102,8 +133,11 @@ def compose(art, logo, focus):
 def main(names):
     for name in names or CARDS:
         spec = CARDS[name]
-        art = load(spec['art'][0], fetch(*spec['art']))
-        logo = load(spec['logo'][0], fetch(*spec['logo']))
+        art = background(spec['background']) if spec['art'] is None else load(spec['art'][0], fetch(*spec['art']))
+        logo_data = fetch(*spec['logo'])
+        if 'symbol' in spec:
+            logo_data = symbol(logo_data, spec['symbol'])
+        logo = load(spec['logo'][0], logo_data)
         path = OUT / f'{name}.webp'
         compose(art, logo, spec['focus']).save(path, 'WEBP', quality=QUALITY, method=6)
         print(f'{path.name}: {SIZE[0]}x{SIZE[1]}, {path.stat().st_size} bytes')
