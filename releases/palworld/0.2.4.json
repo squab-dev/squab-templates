@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "8bd40a2e-1086-4ba7-99c8-087e09f3372d",
+  "name": "Palworld 1.0.5.102999",
+  "game": "palworld",
+  "game_version": "1.0.5.102999",
+  "architectures": [
+    "amd64"
+  ],
+  "run_as": {
+    "uid": 65532,
+    "gid": 65532
+  },
+  "argv": [
+    "/usr/local/bin/squab-palworld-launcher"
+  ],
+  "minimum_limits": {
+    "memory_mib": 16384,
+    "disk_mib": 16384,
+    "cpu_millicores": 4000
+  },
+  "ports": [
+    {
+      "name": "game",
+      "protocol": "udp",
+      "container_port": 8211
+    }
+  ],
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "PALWORLD_SERVER_NAME": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120,
+        "default": "Squab Palworld",
+        "sensitive": false,
+        "create_only": true
+      },
+      "PALWORLD_PLAYERS": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 32,
+        "default": 32,
+        "sensitive": false,
+        "create_only": true
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "readiness": {
+    "kind": "container_health",
+    "port_name": "game",
+    "timeout_seconds": 900
+  },
+  "stop": {
+    "command": "stop",
+    "timeout_seconds": 120
+  },
+  "data_mount": "/data",
+  "capabilities": [
+    "console",
+    "files",
+    "stopped_backup"
+  ],
+  "test_only": false,
+  "artwork_url": "https://raw.githubusercontent.com/squab-dev/squab-templates/main/artwork/palworld.jpg",
+  "image": "ghcr.io/squab-dev/squab-templates/palworld:0.2.4",
+  "revision_id": "3c3010d3-5817-5104-bb6a-f093880c9ef1"
+}

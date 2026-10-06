@@ -1,25 +1,28 @@
 {
-  "version": "v0.2.3",
-  "source": "b969f76fef8f846d69401db8609b7275eaf9ac8a",
-  "release_tools": "88d5ca535403ed24b37c5807b6a2fe6ee7c9961ccd1f8d6aabe3edb14ce07350",
+  "version": "v0.2.4",
+  "source": "b4916c52232ab3363840a1729d224f7de1350fbc",
+  "release_tools": "233434d127afeefe63d9b8a831f006fb83ae97d5158b6319fb7c59bde5505773",
   "images": {
     "hytale": {
-      "build": "a2a87969ad35d85890c07c01379585ffad57a11c6b825e9a7e2f0057869169f5",
-      "template": "86984b35137a3bcce59371367be724d1dbd0d61e5a5da4d68d110b36333915b0",
-      "image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:6b51a15371b89bde92efa56938913a6d204ab2f9100afb82b2630b7471a6b106",
-      "manifest": "releases/hytale/0.2.3.json"
+      "build": "0121ee9caa2fb2965ea85475891541a24371c2dc333dc0eb2316a287202adcc4",
+      "template": "adfd379042037f5252e6b67b7978b9fee0e5cf66f0fda4976a212b8c1360ce01",
+      "image": "ghcr.io/squab-dev/squab-templates/hytale:0.2.4",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/hytale@sha256:927e6ddcf24dfb7df2ab0ea559a9821ade17f84a7eb3ae6bf7f25fbdeaaec23d",
+      "manifest": "releases/hytale/0.2.4.json"
     },
     "palworld": {
       "build": "e254bbedaced3d168845467011cf00b3fc4b0678fdb55bda67791ecd9482478e",
-      "template": "d5b00b8decbfb37713cc6011297fb9ade62cf18116ade83bc65f74dae8de3bd2",
-      "image": "ghcr.io/squab-dev/squab-templates/palworld@sha256:04d7e1d2c0913a133dc73d3f62dd27b72516afa4132805248aa6ac31b56c8a56",
-      "manifest": "releases/palworld/0.2.2.json"
+      "template": "f06e701f18f9d69a67985127069cab25490e1e7cec056752c246e293ca075d33",
+      "image": "ghcr.io/squab-dev/squab-templates/palworld:0.2.4",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/palworld@sha256:04d7e1d2c0913a133dc73d3f62dd27b72516afa4132805248aa6ac31b56c8a56",
+      "manifest": "releases/palworld/0.2.4.json"
     },
     "paper": {
-      "build": "010ed8127d110f68e1c4860c0e21d69c918a2162f12e41f49dc2bea95c003461",
-      "template": "22f737a990736b83b5e9b94a948153b34fead33d79ea753781c39a398a81ecfd",
-      "image": "ghcr.io/squab-dev/squab-templates/paper@sha256:7e1bab0feb33658374bba802c38e4034b19fbeccf06e555cd46f18d91d184be7",
-      "manifest": "releases/paper/0.2.2.json"
+      "build": "b8950e96c7956e86265ed37fa743e942e477a4d06601d72989d5259c7e2028be",
+      "template": "a2cd7c85f61b5da54fe76ba6da163c2b591f88849e650da27c78c718fa7f6260",
+      "image": "ghcr.io/squab-dev/squab-templates/paper:0.2.4",
+      "verified_image": "ghcr.io/squab-dev/squab-templates/paper@sha256:ab6314d63a30cdcc77e57e904ba77536c46ccb162f67e63807726349ba126f88",
+      "manifest": "releases/paper/0.2.4.json"
     }
   }
 }

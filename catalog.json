@@ -1,8 +1,13 @@
 {
   "schema_version": 1,
   "manifests": [
-    "releases/hytale/0.2.3.json",
+    "releases/paper/0.1.0.json",
+    "releases/paper/0.2.1.json",
     "releases/palworld/0.2.2.json",
-    "releases/paper/0.2.2.json"
+    "releases/paper/0.2.2.json",
+    "releases/hytale/0.2.3.json",
+    "releases/hytale/0.2.4.json",
+    "releases/palworld/0.2.4.json",
+    "releases/paper/0.2.4.json"
   ]
 }
