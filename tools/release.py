@@ -14,6 +14,11 @@ BUILD_TOOLS = ('tools/build.sh', 'tools/install-tools.sh', 'tools/merge-lock.py'
                '.github/workflows/image.yml', 'Makefile', 'requirements-dev.txt')
 RELEASE_TOOLS = ('tools/release.py', 'tools/render-manifest.py', 'tools/publish-release.py',
                  '.github/workflows/release.yml', 'api/vendor/template.schema.json')
+# Artwork in this repository is served from raw GitHub. Template sources name the
+# mutable `main` path; released manifests pin it to their own release tag.
+ARTWORK = re.compile(r'https://raw\.githubusercontent\.com/squab-dev/squab-templates/'
+                     r'([A-Za-z0-9._-]+)/(artwork/[a-z0-9][a-z0-9._-]*\.webp)')
+RELEASE_TAG = re.compile(r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)')
 
 
 def read_json(path):
@@ -88,10 +93,23 @@ def validate_image(game, image):
         raise ValueError('placeholder digests are not publishable')
 
 
-def render_manifest(root, game, image):
+def artwork_ref(manifest):
+    """Git ref of repository-hosted artwork, or None for other or absent artwork."""
+    match = ARTWORK.fullmatch(manifest.get('artwork_url', ''))
+    return match.group(1) if match else None
+
+
+def render_manifest(root, game, image, ref=None):
+    """Render a manifest; `ref` pins repository artwork to that release tag."""
     validate_image(game, image)
     manifest = read_json(root / 'images' / game / 'template.json')
     manifest['image'] = image
+    match = ARTWORK.fullmatch(manifest.get('artwork_url', ''))
+    if ref is not None and match:
+        if ref != 'main' and not RELEASE_TAG.fullmatch(ref):
+            raise ValueError('artwork must be pinned to a release tag')
+        manifest['artwork_url'] = ('https://raw.githubusercontent.com/squab-dev/squab-templates/'
+                                   f'{ref}/{match.group(2)}')
     manifest.pop('revision_id', None)
     # Metadata changes must also produce a new revision when the image is reused.
     canonical = json.dumps(manifest, sort_keys=True, separators=(',', ':'))
@@ -150,11 +168,21 @@ def assemble(root, planned, artifacts, version, source, output):
             raise ValueError('refusing to overwrite an immutable image release')
         entry = dict(hashes, image=image, verified_image=verified, manifest=None)
         if hashes['template'] is not None:
-            manifest = render_manifest(root, game, image)
             old_path = old.get('manifest')
-            if old_path and read_json(root / old_path) == manifest:
+            # An unchanged template keeps its published manifest, including the
+            # artwork ref it was released with (historical ones use `main`).
+            published = read_json(root / old_path) if old_path else None
+            ref = artwork_ref(published) if published else None
+            if published and (ref is None or ref == 'main' or RELEASE_TAG.fullmatch(ref)) \
+                    and render_manifest(root, game, image, ref) == published:
                 path = old_path
             else:
+                # The release tag contains this commit's artwork, so the immutable
+                # manifest never follows later artwork changes on main.
+                manifest = render_manifest(root, game, image, version)
+                artwork = ARTWORK.fullmatch(manifest.get('artwork_url', ''))
+                if artwork and not (root / artwork.group(2)).is_file():
+                    raise ValueError(f'missing artwork {artwork.group(2)}')
                 path = f'releases/{game}/{version[1:]}.json'
                 if (root / path).exists():
                     raise ValueError('refusing to overwrite an immutable release')
