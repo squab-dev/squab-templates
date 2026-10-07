@@ -1,7 +1,7 @@
 {
-  "version": "v0.2.7",
-  "source": "58a9e002c272561e8179ae1a39ec94d6052e9bf0",
-  "release_tools": "dd88ca98aa6e4d9a0c126558176a3cfa655d859bf8705b07977050479aff6817",
+  "version": "v0.2.8",
+  "source": "b6779725853dc61fa9516c1e4ede5f7f035480d2",
+  "release_tools": "ea10f054ada92922485dddd209cfa348a25b8d268b70139cbd996a1a4c777ad8",
   "images": {
     "curseforge": {
       "build": "ecf6a60bdea22e65973ed227ed1c9f847b2270d005c57d95cde5ff4d3b6afdbc",
