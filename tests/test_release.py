@@ -35,7 +35,7 @@ class ReleaseTests(unittest.TestCase):
         self.root.mkdir()
         # Build an isolated release history. Copying the live catalog makes this
         # fixture collide with v0.2.1 as soon as the real workflow publishes it.
-        for name in ('images', 'tools', '.github', 'api'):
+        for name in ('images', 'tools', '.github', 'api', 'artwork'):
             shutil.copytree(ROOT / name, self.root / name,
                             ignore=shutil.ignore_patterns('__pycache__', '.env', 'data', 'runtime'))
         for name in ('.gitignore', 'README.md', 'Makefile', 'requirements-dev.txt'):
@@ -108,7 +108,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertNotEqual(old['revision_id'], new['revision_id'])
         self.assertEqual(release.read_json(self.root / old_path), old)
         self.assertEqual(after['images']['hytale'], before['images']['hytale'])
-        self.assertEqual(release.render_manifest(self.root, 'paper', new['image']), new)
+        self.assertEqual(release.render_manifest(self.root, 'paper', new['image'], 'v0.2.2'), new)
 
     def test_catalog_retains_versions_and_artwork_does_not_rebuild(self):
         before = release.read_json(self.root / 'catalog.json')['manifests']
@@ -122,9 +122,40 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(state['images']['paper']['manifest'], catalog)
         self.assertEqual(len(catalog), len(before) + 1)
         self.assertEqual(release.plan(self.root)['build'], [])
-        (self.root/'artwork').mkdir()
         (self.root/'artwork/paper.webp').write_bytes(b'new artwork')
         self.assertEqual(release.plan(self.root)['build'], [])
+
+    def test_new_manifests_pin_repository_artwork_to_their_release_tag(self):
+        state = release.read_json(self.root / release.STATE)
+        for game, entry in state['images'].items():
+            manifest = release.read_json(self.root / entry['manifest'])
+            self.assertEqual(manifest['artwork_url'],
+                             f'https://raw.githubusercontent.com/squab-dev/squab-templates/v0.2.1/artwork/{game}.webp')
+        self.edit('images/hytale/squab-hytale-launcher')
+        after, output = self.assemble('v0.2.2')
+        self.assertEqual(after['images']['paper']['manifest'], state['images']['paper']['manifest'])
+        self.assertIn('/v0.2.2/artwork/hytale.webp',
+                      release.read_json(output / 'releases/hytale/0.2.2.json')['artwork_url'])
+
+    def test_published_main_artwork_manifests_are_carried_forward_unchanged(self):
+        state = release.read_json(self.root / release.STATE)
+        entry = state['images']['paper']
+        legacy = release.render_manifest(self.root, 'paper', entry['image'])
+        self.assertIn('/main/artwork/paper.webp', legacy['artwork_url'])
+        release.write_json(self.root / entry['manifest'], legacy)
+        self.edit('images/hytale/squab-hytale-launcher')
+        after, output = self.assemble('v0.2.2')
+        self.assertEqual(after['images']['paper']['manifest'], entry['manifest'])
+        self.assertFalse((output / 'releases/paper/0.2.2.json').exists())
+
+    def test_missing_artwork_or_unpinned_ref_fails_closed(self):
+        (self.root / 'artwork/hytale.webp').unlink()
+        path = self.root / 'images/hytale/template.json'
+        release.write_json(path, dict(release.read_json(path), name='Hytale renamed'))
+        with self.assertRaisesRegex(ValueError, 'missing artwork'):
+            self.assemble('v0.2.2')
+        with self.assertRaisesRegex(ValueError, 'release tag'):
+            release.render_manifest(self.root, 'paper', image('paper'), 'feature-branch')
 
     def test_missing_artifact_and_placeholder_digest_fail_closed(self):
         self.edit('images/paper/squab-paper-launcher')

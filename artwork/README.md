@@ -8,6 +8,8 @@ Every card is a 1280x640 (2:1) WebP that matches the Panel's catalog card: the p
 uv run --with pillow --with cairosvg python artwork/compose.py
 ```
 
+`template.json` names a card by its `main` URL. The release tooling pins every newly released manifest to the release tag instead (`https://raw.githubusercontent.com/squab-dev/squab-templates/vX.Y.Z/artwork/<card>.webp`), so a published manifest keeps showing the card it was released with even when the file on `main` changes later. Manifests published up to v0.2.7 keep their `main` URL; they are immutable and are not rewritten. Changing a card alone does not release; it reaches the catalog with the next release that writes a new manifest for that game. Keep cards that published manifests reference, because their URLs must stay valid.
+
 Sources, downloaded 2026-10-06:
 
 - paper.webp

@@ -140,8 +140,9 @@ or updating a runtime should not require changing this README.
 
 ## Verification
 
-Run `make check` for regression and syntax checks, plus the affected runtime's
+Run `make check` for regression and syntax checks (every `images/*/squab-*` entry point
+and `tools/*.sh` script is discovered and parsed by `tests/test_scripts.py`), plus the affected runtime's
 build and smoke checks. Run `actionlint` after workflow changes. Release tooling
-tests cover selective builds, version reuse, digest verification, immutable history, failed-run recovery
+tests cover selective builds, version reuse, digest verification, immutable history, release-pinned artwork URLs, failed-run recovery
 and self-contained catalog archives. Release-specific validation and limitations
 belong in [`implementation/`](implementation/) and the release/PR notes.
